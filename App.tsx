@@ -8,7 +8,19 @@ import ShooterUploadScreen from './screens/ShooterUploadScreen';
 import GoalkeeperResponseScreen from './screens/GoalkeeperResponseScreen';
 import ResultsScreen from './screens/ResultsScreen';
 
-const Stack = createNativeStackNavigator();
+export type RootStackParamList = {
+  Home: undefined;
+  CreateChallenge: undefined;
+  ShooterUpload: {
+    challengeName: string;
+    opponent: string;
+    occlusionMethod: string;
+  };
+  GoalkeeperResponse: undefined;
+  Results: undefined;
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
   return (

@@ -1,11 +1,13 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../App';
 
-type Props = {
-  navigation: any;
-};
+type Props = NativeStackScreenProps<RootStackParamList, 'ShooterUpload'>;
 
-export default function ShooterUploadScreen({ navigation }: Props) {
+export default function ShooterUploadScreen({ navigation, route }: Props) {
+  const { challengeName, opponent, occlusionMethod } = route.params;
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -13,6 +15,13 @@ export default function ShooterUploadScreen({ navigation }: Props) {
         <Text style={styles.subtitle}>
           In version 1, this screen represents where the shooter records or uploads the shot.
         </Text>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Challenge Setup</Text>
+          <Text style={styles.cardText}>Challenge: {challengeName}</Text>
+          <Text style={styles.cardText}>Opponent: {opponent}</Text>
+          <Text style={styles.cardText}>Cue-hiding method: {occlusionMethod}</Text>
+        </View>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Planned input</Text>
@@ -57,7 +66,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 20,
-    marginBottom: 28,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },

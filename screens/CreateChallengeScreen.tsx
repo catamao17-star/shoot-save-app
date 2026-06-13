@@ -1,11 +1,29 @@
+import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../App';
 
-type Props = {
-  navigation: any;
-};
+type Props = NativeStackScreenProps<RootStackParamList, 'CreateChallenge'>;
 
 export default function CreateChallengeScreen({ navigation }: Props) {
+  const [challengeName, setChallengeName] = useState('');
+  const [opponent, setOpponent] = useState('');
+  const [occlusionMethod, setOcclusionMethod] = useState('');
+
+  const handleContinue = () => {
+    if (!challengeName.trim() || !opponent.trim() || !occlusionMethod.trim()) {
+      Alert.alert('Missing information', 'Please fill in all fields before continuing.');
+      return;
+    }
+
+    navigation.navigate('ShooterUpload', {
+      challengeName: challengeName.trim(),
+      opponent: opponent.trim(),
+      occlusionMethod: occlusionMethod.trim(),
+    });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -15,18 +33,30 @@ export default function CreateChallengeScreen({ navigation }: Props) {
         </Text>
 
         <Text style={styles.label}>Challenge Name</Text>
-        <TextInput style={styles.input} placeholder="Weekend Save Challenge" />
+        <TextInput
+          style={styles.input}
+          placeholder="Weekend Save Challenge"
+          value={challengeName}
+          onChangeText={setChallengeName}
+        />
 
         <Text style={styles.label}>Opponent</Text>
-        <TextInput style={styles.input} placeholder="Dad" />
+        <TextInput
+          style={styles.input}
+          placeholder="Dad"
+          value={opponent}
+          onChangeText={setOpponent}
+        />
 
         <Text style={styles.label}>Cue-Hiding Method</Text>
-        <TextInput style={styles.input} placeholder="Black curtain" />
+        <TextInput
+          style={styles.input}
+          placeholder="Black curtain"
+          value={occlusionMethod}
+          onChangeText={setOcclusionMethod}
+        />
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={() => navigation.navigate('ShooterUpload')}
-        >
+        <TouchableOpacity style={styles.button} onPress={handleContinue}>
           <Text style={styles.buttonText}>Continue to Shooter Upload</Text>
         </TouchableOpacity>
       </View>
