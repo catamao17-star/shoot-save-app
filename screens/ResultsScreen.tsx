@@ -1,4 +1,5 @@
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View } from 'react-native';
 
 export default function ResultsScreen() {
   return (
@@ -10,11 +11,21 @@ export default function ResultsScreen() {
         </Text>
 
         <View style={styles.card}>
-          <Text style={styles.row}><Text style={styles.label}>Shot Direction:</Text> Top right</Text>
-          <Text style={styles.row}><Text style={styles.label}>Shot Height:</Text> High</Text>
-          <Text style={styles.row}><Text style={styles.label}>Reaction Side:</Text> Right</Text>
-          <Text style={styles.row}><Text style={styles.label}>Reaction Time:</Text> 0.41s</Text>
-          <Text style={styles.row}><Text style={styles.label}>Outcome:</Text> Late save attempt</Text>
+          <Text style={styles.row}>
+            <Text style={styles.label}>Shot Direction:</Text> Top right
+          </Text>
+          <Text style={styles.row}>
+            <Text style={styles.label}>Shot Height:</Text> High
+          </Text>
+          <Text style={styles.row}>
+            <Text style={styles.label}>Reaction Side:</Text> Right
+          </Text>
+          <Text style={styles.row}>
+            <Text style={styles.label}>Reaction Time:</Text> 0.41s
+          </Text>
+          <Text style={styles.row}>
+            <Text style={styles.label}>Outcome:</Text> Late save attempt
+          </Text>
         </View>
       </View>
     </SafeAreaView>
