@@ -7,24 +7,19 @@ import CreateChallengeScreen from './screens/CreateChallengeScreen';
 import ShooterUploadScreen from './screens/ShooterUploadScreen';
 import GoalkeeperResponseScreen from './screens/GoalkeeperResponseScreen';
 import ResultsScreen from './screens/ResultsScreen';
+import type { Challenge } from './types/challenge';
 
 export type RootStackParamList = {
   Home: undefined;
   CreateChallenge: undefined;
   ShooterUpload: {
-    challengeName: string;
-    opponent: string;
-    occlusionMethod: string;
+    challenge: Challenge;
   };
   GoalkeeperResponse: {
-    challengeName: string;
-    opponent: string;
-    occlusionMethod: string;
+    challenge: Challenge;
   };
   Results: {
-    challengeName: string;
-    opponent: string;
-    occlusionMethod: string;
+    challenge: Challenge;
   };
 };
 

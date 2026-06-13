@@ -6,7 +6,7 @@ import type { RootStackParamList } from '../App';
 type Props = NativeStackScreenProps<RootStackParamList, 'ShooterUpload'>;
 
 export default function ShooterUploadScreen({ navigation, route }: Props) {
-  const { challengeName, opponent, occlusionMethod } = route.params;
+  const { challenge } = route.params;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -18,9 +18,9 @@ export default function ShooterUploadScreen({ navigation, route }: Props) {
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Challenge Setup</Text>
-          <Text style={styles.cardText}>Challenge: {challengeName}</Text>
-          <Text style={styles.cardText}>Opponent: {opponent}</Text>
-          <Text style={styles.cardText}>Cue-hiding method: {occlusionMethod}</Text>
+          <Text style={styles.cardText}>Challenge: {challenge.challengeName}</Text>
+          <Text style={styles.cardText}>Opponent: {challenge.opponent}</Text>
+          <Text style={styles.cardText}>Cue-hiding method: {challenge.occlusionMethod}</Text>
         </View>
 
         <View style={styles.card}>
@@ -34,9 +34,7 @@ export default function ShooterUploadScreen({ navigation, route }: Props) {
           style={styles.button}
           onPress={() =>
             navigation.navigate('GoalkeeperResponse', {
-              challengeName,
-              opponent,
-              occlusionMethod,
+              challenge,
             })
           }
         >

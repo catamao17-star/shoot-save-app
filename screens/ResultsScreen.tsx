@@ -6,7 +6,7 @@ import type { RootStackParamList } from '../App';
 type Props = NativeStackScreenProps<RootStackParamList, 'Results'>;
 
 export default function ResultsScreen({ route }: Props) {
-  const { challengeName, opponent, occlusionMethod } = route.params;
+  const { challenge } = route.params;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -19,13 +19,13 @@ export default function ResultsScreen({ route }: Props) {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Challenge Summary</Text>
           <Text style={styles.row}>
-            <Text style={styles.label}>Challenge:</Text> {challengeName}
+            <Text style={styles.label}>Challenge:</Text> {challenge.challengeName}
           </Text>
           <Text style={styles.row}>
-            <Text style={styles.label}>Opponent:</Text> {opponent}
+            <Text style={styles.label}>Opponent:</Text> {challenge.opponent}
           </Text>
           <Text style={styles.row}>
-            <Text style={styles.label}>Cue-hiding method:</Text> {occlusionMethod}
+            <Text style={styles.label}>Cue-hiding method:</Text> {challenge.occlusionMethod}
           </Text>
         </View>
 
