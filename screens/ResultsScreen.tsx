@@ -1,7 +1,13 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet, Text, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../App';
 
-export default function ResultsScreen() {
+type Props = NativeStackScreenProps<RootStackParamList, 'Results'>;
+
+export default function ResultsScreen({ route }: Props) {
+  const { challengeName, opponent, occlusionMethod } = route.params;
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -11,6 +17,20 @@ export default function ResultsScreen() {
         </Text>
 
         <View style={styles.card}>
+          <Text style={styles.cardTitle}>Challenge Summary</Text>
+          <Text style={styles.row}>
+            <Text style={styles.label}>Challenge:</Text> {challengeName}
+          </Text>
+          <Text style={styles.row}>
+            <Text style={styles.label}>Opponent:</Text> {opponent}
+          </Text>
+          <Text style={styles.row}>
+            <Text style={styles.label}>Cue-hiding method:</Text> {occlusionMethod}
+          </Text>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Sample Output</Text>
           <Text style={styles.row}>
             <Text style={styles.label}>Shot Direction:</Text> Top right
           </Text>
@@ -57,8 +77,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 20,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 12,
   },
   row: {
     fontSize: 16,

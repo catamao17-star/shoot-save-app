@@ -16,8 +16,16 @@ export type RootStackParamList = {
     opponent: string;
     occlusionMethod: string;
   };
-  GoalkeeperResponse: undefined;
-  Results: undefined;
+  GoalkeeperResponse: {
+    challengeName: string;
+    opponent: string;
+    occlusionMethod: string;
+  };
+  Results: {
+    challengeName: string;
+    opponent: string;
+    occlusionMethod: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

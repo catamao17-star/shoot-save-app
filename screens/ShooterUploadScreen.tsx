@@ -32,7 +32,13 @@ export default function ShooterUploadScreen({ navigation, route }: Props) {
 
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('GoalkeeperResponse')}
+          onPress={() =>
+            navigation.navigate('GoalkeeperResponse', {
+              challengeName,
+              opponent,
+              occlusionMethod,
+            })
+          }
         >
           <Text style={styles.buttonText}>Continue to Goalkeeper Response</Text>
         </TouchableOpacity>

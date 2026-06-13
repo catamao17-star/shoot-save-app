@@ -1,11 +1,13 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../App';
 
-type Props = {
-  navigation: any;
-};
+type Props = NativeStackScreenProps<RootStackParamList, 'GoalkeeperResponse'>;
 
-export default function GoalkeeperResponseScreen({ navigation }: Props) {
+export default function GoalkeeperResponseScreen({ navigation, route }: Props) {
+  const { challengeName, opponent, occlusionMethod } = route.params;
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -13,6 +15,13 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
         <Text style={styles.subtitle}>
           This screen represents the goalkeeper watching the challenge and recording a save attempt.
         </Text>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Challenge Setup</Text>
+          <Text style={styles.cardText}>Challenge: {challengeName}</Text>
+          <Text style={styles.cardText}>Opponent: {opponent}</Text>
+          <Text style={styles.cardText}>Cue-hiding method: {occlusionMethod}</Text>
+        </View>
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Version 1 data goal</Text>
@@ -23,7 +32,13 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
 
         <TouchableOpacity
           style={styles.button}
-          onPress={() => navigation.navigate('Results')}
+          onPress={() =>
+            navigation.navigate('Results', {
+              challengeName,
+              opponent,
+              occlusionMethod,
+            })
+          }
         >
           <Text style={styles.buttonText}>Continue to Results</Text>
         </TouchableOpacity>
@@ -57,7 +72,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 20,
-    marginBottom: 28,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
