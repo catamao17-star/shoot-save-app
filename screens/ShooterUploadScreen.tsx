@@ -2,11 +2,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
+import { useChallenge } from '../context/ChallengeContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ShooterUpload'>;
 
-export default function ShooterUploadScreen({ navigation, route }: Props) {
-  const { challenge } = route.params;
+export default function ShooterUploadScreen({ navigation }: Props) {
+  const { currentChallenge } = useChallenge();
+
+  if (!currentChallenge) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Shooter Upload</Text>
+          <Text style={styles.subtitle}>No challenge found. Please create a challenge first.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -18,9 +30,11 @@ export default function ShooterUploadScreen({ navigation, route }: Props) {
 
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Challenge Setup</Text>
-          <Text style={styles.cardText}>Challenge: {challenge.challengeName}</Text>
-          <Text style={styles.cardText}>Opponent: {challenge.opponent}</Text>
-          <Text style={styles.cardText}>Cue-hiding method: {challenge.occlusionMethod}</Text>
+          <Text style={styles.cardText}>Challenge: {currentChallenge.challengeName}</Text>
+          <Text style={styles.cardText}>Opponent: {currentChallenge.opponent}</Text>
+          <Text style={styles.cardText}>
+            Cue-hiding method: {currentChallenge.occlusionMethod}
+          </Text>
         </View>
 
         <View style={styles.card}>
@@ -32,11 +46,7 @@ export default function ShooterUploadScreen({ navigation, route }: Props) {
 
         <TouchableOpacity
           style={styles.button}
-          onPress={() =>
-            navigation.navigate('GoalkeeperResponse', {
-              challenge,
-            })
-          }
+          onPress={() => navigation.navigate('GoalkeeperResponse')}
         >
           <Text style={styles.buttonText}>Continue to Goalkeeper Response</Text>
         </TouchableOpacity>

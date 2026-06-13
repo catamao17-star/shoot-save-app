@@ -3,6 +3,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
+import type { Challenge } from '../types/challenge';
+import { useChallenge } from '../context/ChallengeContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateChallenge'>;
 
@@ -10,6 +12,7 @@ export default function CreateChallengeScreen({ navigation }: Props) {
   const [challengeName, setChallengeName] = useState('');
   const [opponent, setOpponent] = useState('');
   const [occlusionMethod, setOcclusionMethod] = useState('');
+  const { setCurrentChallenge } = useChallenge();
 
   const handleContinue = () => {
     if (!challengeName.trim() || !opponent.trim() || !occlusionMethod.trim()) {
@@ -17,11 +20,14 @@ export default function CreateChallengeScreen({ navigation }: Props) {
       return;
     }
 
-    navigation.navigate('ShooterUpload', {
+    const challenge: Challenge = {
       challengeName: challengeName.trim(),
       opponent: opponent.trim(),
       occlusionMethod: occlusionMethod.trim(),
-    });
+    };
+
+    setCurrentChallenge(challenge);
+    navigation.navigate('ShooterUpload');
   };
 
   return (

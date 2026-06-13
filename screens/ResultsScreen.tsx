@@ -1,12 +1,20 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet, Text, View } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../App';
+import { useChallenge } from '../context/ChallengeContext';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Results'>;
+export default function ResultsScreen() {
+  const { currentChallenge } = useChallenge();
 
-export default function ResultsScreen({ route }: Props) {
-  const { challenge } = route.params;
+  if (!currentChallenge) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Results</Text>
+          <Text style={styles.subtitle}>No challenge found. Please create a challenge first.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -19,13 +27,13 @@ export default function ResultsScreen({ route }: Props) {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Challenge Summary</Text>
           <Text style={styles.row}>
-            <Text style={styles.label}>Challenge:</Text> {challenge.challengeName}
+            <Text style={styles.label}>Challenge:</Text> {currentChallenge.challengeName}
           </Text>
           <Text style={styles.row}>
-            <Text style={styles.label}>Opponent:</Text> {challenge.opponent}
+            <Text style={styles.label}>Opponent:</Text> {currentChallenge.opponent}
           </Text>
           <Text style={styles.row}>
-            <Text style={styles.label}>Cue-hiding method:</Text> {challenge.occlusionMethod}
+            <Text style={styles.label}>Cue-hiding method:</Text> {currentChallenge.occlusionMethod}
           </Text>
         </View>
 
