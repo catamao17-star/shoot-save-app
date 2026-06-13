@@ -3,3 +3,5 @@ export type Challenge = {
   opponent: string;
   occlusionMethod: string;
 };
+
+export type CameraAngle = 'Front' | 'Side' | 'Behind Goal' | 'Custom';
