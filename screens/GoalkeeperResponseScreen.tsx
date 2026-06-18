@@ -53,6 +53,7 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
     }
 
     const goalkeeperData: GoalkeeperResponseData = {
+      submittedAt: new Date().toISOString(),
       reactionDirection,
       reactionTimingNote: reactionTimingNote.trim(),
       saveAttemptResult,
@@ -93,6 +94,9 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
           {shooterUploadData && (
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Shooter Metadata</Text>
+              <Text style={styles.cardText}>
+                Submitted At: {new Date(shooterUploadData.submittedAt).toLocaleString()}
+              </Text>
               <Text style={styles.cardText}>Camera angle: {shooterUploadData.cameraAngle}</Text>
               <Text style={styles.cardText}>
                 Shot notes: {shooterUploadData.shotNotes || 'None provided'}

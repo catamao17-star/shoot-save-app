@@ -55,6 +55,10 @@ export default function ResultsScreen() {
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Shooter Upload Summary</Text>
               <Text style={styles.row}>
+                <Text style={styles.label}>Submitted At:</Text>{' '}
+                {new Date(shooterUploadData.submittedAt).toLocaleString()}
+              </Text>
+              <Text style={styles.row}>
                 <Text style={styles.label}>Camera Angle:</Text> {shooterUploadData.cameraAngle}
               </Text>
               <Text style={styles.row}>
@@ -71,6 +75,10 @@ export default function ResultsScreen() {
           {goalkeeperResponseData && (
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Goalkeeper Response Summary</Text>
+              <Text style={styles.row}>
+                <Text style={styles.label}>Submitted At:</Text>{' '}
+                {new Date(goalkeeperResponseData.submittedAt).toLocaleString()}
+              </Text>
               <Text style={styles.row}>
                 <Text style={styles.label}>Reaction Direction:</Text>{' '}
                 {goalkeeperResponseData.reactionDirection}

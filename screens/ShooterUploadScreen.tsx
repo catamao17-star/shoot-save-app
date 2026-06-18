@@ -43,6 +43,7 @@ export default function ShooterUploadScreen({ navigation }: Props) {
     }
 
     const shooterData: ShooterUploadData = {
+      submittedAt: new Date().toISOString(),
       cameraAngle: selectedCameraAngle,
       shotNotes: shotNotes.trim(),
       videoSelected,
