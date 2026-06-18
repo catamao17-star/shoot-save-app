@@ -17,6 +17,10 @@ export default function ResultsScreen() {
     );
   }
 
+  const isShooterComplete = !!shooterUploadData;
+  const isGoalkeeperComplete = !!goalkeeperResponseData;
+  const isRecordComplete = !!currentChallenge && isShooterComplete && isGoalkeeperComplete;
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -30,6 +34,25 @@ export default function ResultsScreen() {
           <Text style={styles.subtitle}>
             Example version 1 output for the challenge.
           </Text>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Completion Status</Text>
+            <Text style={styles.row}>
+              <Text style={styles.label}>Challenge Created:</Text> Yes
+            </Text>
+            <Text style={styles.row}>
+              <Text style={styles.label}>Shooter Submitted:</Text>{' '}
+              {isShooterComplete ? 'Yes' : 'No'}
+            </Text>
+            <Text style={styles.row}>
+              <Text style={styles.label}>Goalkeeper Submitted:</Text>{' '}
+              {isGoalkeeperComplete ? 'Yes' : 'No'}
+            </Text>
+            <Text style={styles.row}>
+              <Text style={styles.label}>Record Complete:</Text>{' '}
+              {isRecordComplete ? 'Yes' : 'No'}
+            </Text>
+          </View>
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Challenge Summary</Text>
