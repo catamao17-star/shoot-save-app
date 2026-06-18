@@ -55,6 +55,76 @@ export default function ResultsScreen() {
           </View>
 
           <View style={styles.card}>
+            <Text style={styles.cardTitle}>Export-Ready Record Summary</Text>
+            <Text style={styles.codeLine}>{'{'}</Text>
+            <Text style={styles.codeLine}>
+              {'  '}challengeId: "{currentChallenge.id}",
+            </Text>
+            <Text style={styles.codeLine}>
+              {'  '}createdAt: "{currentChallenge.createdAt}",
+            </Text>
+            <Text style={styles.codeLine}>
+              {'  '}challengeName: "{currentChallenge.challengeName}",
+            </Text>
+            <Text style={styles.codeLine}>
+              {'  '}opponent: "{currentChallenge.opponent}",
+            </Text>
+            <Text style={styles.codeLine}>
+              {'  '}occlusionMethod: "{currentChallenge.occlusionMethod}",
+            </Text>
+            <Text style={styles.codeLine}>
+              {'  '}shooterSubmitted: {isShooterComplete ? 'true' : 'false'},
+            </Text>
+            <Text style={styles.codeLine}>
+              {'  '}goalkeeperSubmitted: {isGoalkeeperComplete ? 'true' : 'false'},
+            </Text>
+
+            {shooterUploadData && (
+              <>
+                <Text style={styles.codeLine}>{'  '}shooterUpload: {'{'}</Text>
+                <Text style={styles.codeLine}>
+                  {'    '}submittedAt: "{shooterUploadData.submittedAt}",
+                </Text>
+                <Text style={styles.codeLine}>
+                  {'    '}cameraAngle: "{shooterUploadData.cameraAngle}",
+                </Text>
+                <Text style={styles.codeLine}>
+                  {'    '}shotNotes: "{shooterUploadData.shotNotes || 'None'}",
+                </Text>
+                <Text style={styles.codeLine}>
+                  {'    '}videoSelected: {shooterUploadData.videoSelected ? 'true' : 'false'},
+                </Text>
+                <Text style={styles.codeLine}>{'  '}{'},'}</Text>
+              </>
+            )}
+
+            {goalkeeperResponseData && (
+              <>
+                <Text style={styles.codeLine}>{'  '}goalkeeperResponse: {'{'}</Text>
+                <Text style={styles.codeLine}>
+                  {'    '}submittedAt: "{goalkeeperResponseData.submittedAt}",
+                </Text>
+                <Text style={styles.codeLine}>
+                  {'    '}reactionDirection: "{goalkeeperResponseData.reactionDirection}",
+                </Text>
+                <Text style={styles.codeLine}>
+                  {'    '}reactionTimingNote: "{goalkeeperResponseData.reactionTimingNote || 'None'}",
+                </Text>
+                <Text style={styles.codeLine}>
+                  {'    '}saveAttemptResult: "{goalkeeperResponseData.saveAttemptResult}",
+                </Text>
+                <Text style={styles.codeLine}>
+                  {'    '}responseVideoSelected:{' '}
+                  {goalkeeperResponseData.responseVideoSelected ? 'true' : 'false'},
+                </Text>
+                <Text style={styles.codeLine}>{'  '}{'}'}</Text>
+              </>
+            )}
+
+            <Text style={styles.codeLine}>{'}'}</Text>
+          </View>
+
+          <View style={styles.card}>
             <Text style={styles.cardTitle}>Challenge Summary</Text>
             <Text style={styles.row}>
               <Text style={styles.label}>Challenge ID:</Text> {currentChallenge.id}
@@ -191,5 +261,11 @@ const styles = StyleSheet.create({
   label: {
     fontWeight: '700',
     color: '#111827',
+  },
+  codeLine: {
+    fontSize: 13,
+    color: '#1F2937',
+    fontFamily: 'Courier',
+    marginBottom: 4,
   },
 });
