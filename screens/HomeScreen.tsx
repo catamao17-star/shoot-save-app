@@ -57,6 +57,12 @@ export default function HomeScreen({ navigation }: Props) {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Current Challenge</Text>
             <Text style={styles.cardText}>
+              <Text style={styles.label}>Challenge ID:</Text> {currentChallenge.id}
+            </Text>
+            <Text style={styles.cardText}>
+              <Text style={styles.label}>Created At:</Text> {new Date(currentChallenge.createdAt).toLocaleString()}
+            </Text>
+            <Text style={styles.cardText}>
               <Text style={styles.label}>Challenge:</Text> {currentChallenge.challengeName}
             </Text>
             <Text style={styles.cardText}>

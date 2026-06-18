@@ -9,6 +9,10 @@ import ProgressSteps from '../components/ProgressSteps';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateChallenge'>;
 
+function generateChallengeId() {
+  return `CH-${Date.now()}`;
+}
+
 export default function CreateChallengeScreen({ navigation }: Props) {
   const [challengeName, setChallengeName] = useState('');
   const [opponent, setOpponent] = useState('');
@@ -22,6 +26,8 @@ export default function CreateChallengeScreen({ navigation }: Props) {
     }
 
     const challenge: Challenge = {
+      id: generateChallengeId(),
+      createdAt: new Date().toISOString(),
       challengeName: challengeName.trim(),
       opponent: opponent.trim(),
       occlusionMethod: occlusionMethod.trim(),

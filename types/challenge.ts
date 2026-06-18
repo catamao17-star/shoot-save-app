@@ -1,4 +1,6 @@
 export type Challenge = {
+  id: string;
+  createdAt: string;
   challengeName: string;
   opponent: string;
   occlusionMethod: string;

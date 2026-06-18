@@ -68,6 +68,10 @@ export default function ShooterUploadScreen({ navigation }: Props) {
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Challenge Setup</Text>
+            <Text style={styles.cardText}>Challenge ID: {currentChallenge.id}</Text>
+            <Text style={styles.cardText}>
+              Created At: {new Date(currentChallenge.createdAt).toLocaleString()}
+            </Text>
             <Text style={styles.cardText}>Challenge: {currentChallenge.challengeName}</Text>
             <Text style={styles.cardText}>Opponent: {currentChallenge.opponent}</Text>
             <Text style={styles.cardText}>

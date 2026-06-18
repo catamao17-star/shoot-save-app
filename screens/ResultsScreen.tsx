@@ -34,6 +34,13 @@ export default function ResultsScreen() {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Challenge Summary</Text>
             <Text style={styles.row}>
+              <Text style={styles.label}>Challenge ID:</Text> {currentChallenge.id}
+            </Text>
+            <Text style={styles.row}>
+              <Text style={styles.label}>Created At:</Text>{' '}
+              {new Date(currentChallenge.createdAt).toLocaleString()}
+            </Text>
+            <Text style={styles.row}>
               <Text style={styles.label}>Challenge:</Text> {currentChallenge.challengeName}
             </Text>
             <Text style={styles.row}>
