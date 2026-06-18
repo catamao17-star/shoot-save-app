@@ -1,6 +1,7 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useChallenge } from '../context/ChallengeContext';
+import ProgressSteps from '../components/ProgressSteps';
 
 export default function ResultsScreen() {
   const { currentChallenge, shooterUploadData, goalkeeperResponseData } = useChallenge();
@@ -23,6 +24,8 @@ export default function ResultsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
+          <ProgressSteps currentStep={4} />
+
           <Text style={styles.title}>Results</Text>
           <Text style={styles.subtitle}>
             Example version 1 output for the challenge.

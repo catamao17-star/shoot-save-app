@@ -13,6 +13,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
 import { useChallenge } from '../context/ChallengeContext';
 import type { CameraAngle, ShooterUploadData } from '../types/challenge';
+import ProgressSteps from '../components/ProgressSteps';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ShooterUpload'>;
 
@@ -58,6 +59,8 @@ export default function ShooterUploadScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
+          <ProgressSteps currentStep={2} />
+
           <Text style={styles.title}>Shooter Upload</Text>
           <Text style={styles.subtitle}>
             This screen represents where the shooter records or uploads the shot and captures basic metadata for version 1.

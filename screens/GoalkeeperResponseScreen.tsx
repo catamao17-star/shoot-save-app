@@ -17,6 +17,7 @@ import type {
   ReactionDirection,
   SaveAttemptResult,
 } from '../types/challenge';
+import ProgressSteps from '../components/ProgressSteps';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GoalkeeperResponse'>;
 
@@ -69,6 +70,8 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
+          <ProgressSteps currentStep={3} />
+
           <Text style={styles.title}>Goalkeeper Response</Text>
           <Text style={styles.subtitle}>
             This screen represents the goalkeeper watching the challenge and recording a save attempt.

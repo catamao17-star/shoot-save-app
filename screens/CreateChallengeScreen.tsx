@@ -5,6 +5,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
 import type { Challenge } from '../types/challenge';
 import { useChallenge } from '../context/ChallengeContext';
+import ProgressSteps from '../components/ProgressSteps';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateChallenge'>;
 
@@ -12,7 +13,7 @@ export default function CreateChallengeScreen({ navigation }: Props) {
   const [challengeName, setChallengeName] = useState('');
   const [opponent, setOpponent] = useState('');
   const [occlusionMethod, setOcclusionMethod] = useState('');
-  const { setCurrentChallenge } = useChallenge();
+  const { setCurrentChallenge, setShooterUploadData, setGoalkeeperResponseData } = useChallenge();
 
   const handleContinue = () => {
     if (!challengeName.trim() || !opponent.trim() || !occlusionMethod.trim()) {
@@ -27,12 +28,16 @@ export default function CreateChallengeScreen({ navigation }: Props) {
     };
 
     setCurrentChallenge(challenge);
+    setShooterUploadData(null);
+    setGoalkeeperResponseData(null);
     navigation.navigate('ShooterUpload');
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
+        <ProgressSteps currentStep={1} />
+
         <Text style={styles.title}>Create Challenge</Text>
         <Text style={styles.subtitle}>
           Set up the first version of the remote shooter vs goalkeeper flow.
