@@ -1,13 +1,35 @@
+import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
 import { useChallenge } from '../context/ChallengeContext';
+import type {
+  GoalkeeperResponseData,
+  ReactionDirection,
+  SaveAttemptResult,
+} from '../types/challenge';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GoalkeeperResponse'>;
 
+const reactionDirectionOptions: ReactionDirection[] = ['Left', 'Center', 'Right'];
+const saveAttemptResultOptions: SaveAttemptResult[] = ['Saved', 'Missed', 'Late Reaction'];
+
 export default function GoalkeeperResponseScreen({ navigation }: Props) {
-  const { currentChallenge } = useChallenge();
+  const { currentChallenge, shooterUploadData, setGoalkeeperResponseData } = useChallenge();
+  const [reactionDirection, setReactionDirection] = useState<ReactionDirection>('Center');
+  const [reactionTimingNote, setReactionTimingNote] = useState('');
+  const [saveAttemptResult, setSaveAttemptResult] =
+    useState<SaveAttemptResult>('Late Reaction');
+  const [responseVideoSelected, setResponseVideoSelected] = useState(false);
 
   if (!currentChallenge) {
     return (
@@ -20,34 +42,149 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
     );
   }
 
+  const handleContinue = () => {
+    if (!responseVideoSelected) {
+      Alert.alert(
+        'Missing response video',
+        'Please mark the goalkeeper response video as selected before continuing.'
+      );
+      return;
+    }
+
+    const goalkeeperData: GoalkeeperResponseData = {
+      reactionDirection,
+      reactionTimingNote: reactionTimingNote.trim(),
+      saveAttemptResult,
+      responseVideoSelected,
+    };
+
+    setGoalkeeperResponseData(goalkeeperData);
+    navigation.navigate('Results');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Goalkeeper Response</Text>
-        <Text style={styles.subtitle}>
-          This screen represents the goalkeeper watching the challenge and recording a save attempt.
-        </Text>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Challenge Setup</Text>
-          <Text style={styles.cardText}>Challenge: {currentChallenge.challengeName}</Text>
-          <Text style={styles.cardText}>Opponent: {currentChallenge.opponent}</Text>
-          <Text style={styles.cardText}>
-            Cue-hiding method: {currentChallenge.occlusionMethod}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          <Text style={styles.title}>Goalkeeper Response</Text>
+          <Text style={styles.subtitle}>
+            This screen represents the goalkeeper watching the challenge and recording a save attempt.
           </Text>
-        </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Version 1 data goal</Text>
-          <Text style={styles.cardText}>• Reaction direction</Text>
-          <Text style={styles.cardText}>• Reaction timing</Text>
-          <Text style={styles.cardText}>• Save or miss</Text>
-        </View>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Challenge Setup</Text>
+            <Text style={styles.cardText}>Challenge: {currentChallenge.challengeName}</Text>
+            <Text style={styles.cardText}>Opponent: {currentChallenge.opponent}</Text>
+            <Text style={styles.cardText}>
+              Cue-hiding method: {currentChallenge.occlusionMethod}
+            </Text>
+          </View>
 
-        <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('Results')}>
-          <Text style={styles.buttonText}>Continue to Results</Text>
-        </TouchableOpacity>
-      </View>
+          {shooterUploadData && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Shooter Metadata</Text>
+              <Text style={styles.cardText}>Camera angle: {shooterUploadData.cameraAngle}</Text>
+              <Text style={styles.cardText}>
+                Shot notes: {shooterUploadData.shotNotes || 'None provided'}
+              </Text>
+              <Text style={styles.cardText}>
+                Video selected: {shooterUploadData.videoSelected ? 'Yes' : 'No'}
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Goalkeeper Metadata</Text>
+
+            <Text style={styles.label}>Reaction Direction</Text>
+            <View style={styles.optionRow}>
+              {reactionDirectionOptions.map((option) => {
+                const isSelected = reactionDirection === option;
+
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
+                    onPress={() => setReactionDirection(option)}
+                  >
+                    <Text
+                      style={[styles.optionButtonText, isSelected && styles.optionButtonTextSelected]}
+                    >
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={styles.label}>Reaction Timing Note</Text>
+            <TextInput
+              style={[styles.input, styles.notesInput]}
+              placeholder="Example: reacted slightly late, shifted right after ball release"
+              value={reactionTimingNote}
+              onChangeText={setReactionTimingNote}
+              multiline
+            />
+
+            <Text style={styles.label}>Save Attempt Result</Text>
+            <View style={styles.optionRow}>
+              {saveAttemptResultOptions.map((option) => {
+                const isSelected = saveAttemptResult === option;
+
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
+                    onPress={() => setSaveAttemptResult(option)}
+                  >
+                    <Text
+                      style={[styles.optionButtonText, isSelected && styles.optionButtonTextSelected]}
+                    >
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={styles.label}>Response Video</Text>
+            <TouchableOpacity
+              style={[styles.videoButton, responseVideoSelected && styles.videoButtonSelected]}
+              onPress={() => setResponseVideoSelected((prev) => !prev)}
+            >
+              <Text
+                style={[
+                  styles.videoButtonText,
+                  responseVideoSelected && styles.videoButtonTextSelected,
+                ]}
+              >
+                {responseVideoSelected
+                  ? 'Goalkeeper Response Video Selected'
+                  : 'Mark Goalkeeper Response Video as Selected'}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryTitle}>Current Goalkeeper Metadata</Text>
+              <Text style={styles.summaryText}>Reaction direction: {reactionDirection}</Text>
+              <Text style={styles.summaryText}>
+                Timing note: {reactionTimingNote.trim() ? reactionTimingNote : 'None yet'}
+              </Text>
+              <Text style={styles.summaryText}>Result: {saveAttemptResult}</Text>
+              <Text style={styles.summaryText}>
+                Response video selected: {responseVideoSelected ? 'Yes' : 'No'}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity style={styles.button} onPress={handleContinue}>
+            <Text style={styles.buttonText}>Continue to Results</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -56,6 +193,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F4F7FB',
+  },
+  scrollContent: {
+    paddingBottom: 32,
   },
   content: {
     flex: 1,
@@ -85,19 +225,97 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   cardText: {
     fontSize: 15,
     color: '#4B5563',
     marginBottom: 6,
   },
+  label: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 8,
+    marginTop: 14,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  optionButton: {
+    backgroundColor: '#E5E7EB',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+  },
+  optionButtonSelected: {
+    backgroundColor: '#111827',
+  },
+  optionButtonText: {
+    color: '#111827',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  optionButtonTextSelected: {
+    color: '#FFFFFF',
+  },
+  input: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  notesInput: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  videoButton: {
+    backgroundColor: '#E5E7EB',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  videoButtonSelected: {
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  videoButtonText: {
+    color: '#111827',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  videoButtonTextSelected: {
+    color: '#166534',
+  },
+  summaryBox: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 18,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  summaryTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  summaryText: {
+    fontSize: 14,
+    color: '#4B5563',
+    marginBottom: 4,
+  },
   button: {
     backgroundColor: '#111827',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: 10,
   },
   buttonText: {
     color: '#FFFFFF',

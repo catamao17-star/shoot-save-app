@@ -1,9 +1,9 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useChallenge } from '../context/ChallengeContext';
 
 export default function ResultsScreen() {
-  const { currentChallenge } = useChallenge();
+  const { currentChallenge, shooterUploadData, goalkeeperResponseData } = useChallenge();
 
   if (!currentChallenge) {
     return (
@@ -18,44 +18,88 @@ export default function ResultsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Results</Text>
-        <Text style={styles.subtitle}>
-          Example version 1 output for the challenge.
-        </Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          <Text style={styles.title}>Results</Text>
+          <Text style={styles.subtitle}>
+            Example version 1 output for the challenge.
+          </Text>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Challenge Summary</Text>
-          <Text style={styles.row}>
-            <Text style={styles.label}>Challenge:</Text> {currentChallenge.challengeName}
-          </Text>
-          <Text style={styles.row}>
-            <Text style={styles.label}>Opponent:</Text> {currentChallenge.opponent}
-          </Text>
-          <Text style={styles.row}>
-            <Text style={styles.label}>Cue-hiding method:</Text> {currentChallenge.occlusionMethod}
-          </Text>
-        </View>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Challenge Summary</Text>
+            <Text style={styles.row}>
+              <Text style={styles.label}>Challenge:</Text> {currentChallenge.challengeName}
+            </Text>
+            <Text style={styles.row}>
+              <Text style={styles.label}>Opponent:</Text> {currentChallenge.opponent}
+            </Text>
+            <Text style={styles.row}>
+              <Text style={styles.label}>Cue-hiding method:</Text> {currentChallenge.occlusionMethod}
+            </Text>
+          </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Sample Output</Text>
-          <Text style={styles.row}>
-            <Text style={styles.label}>Shot Direction:</Text> Top right
-          </Text>
-          <Text style={styles.row}>
-            <Text style={styles.label}>Shot Height:</Text> High
-          </Text>
-          <Text style={styles.row}>
-            <Text style={styles.label}>Reaction Side:</Text> Right
-          </Text>
-          <Text style={styles.row}>
-            <Text style={styles.label}>Reaction Time:</Text> 0.41s
-          </Text>
-          <Text style={styles.row}>
-            <Text style={styles.label}>Outcome:</Text> Late save attempt
-          </Text>
+          {shooterUploadData && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Shooter Upload Summary</Text>
+              <Text style={styles.row}>
+                <Text style={styles.label}>Camera Angle:</Text> {shooterUploadData.cameraAngle}
+              </Text>
+              <Text style={styles.row}>
+                <Text style={styles.label}>Shot Notes:</Text>{' '}
+                {shooterUploadData.shotNotes || 'None provided'}
+              </Text>
+              <Text style={styles.row}>
+                <Text style={styles.label}>Video Selected:</Text>{' '}
+                {shooterUploadData.videoSelected ? 'Yes' : 'No'}
+              </Text>
+            </View>
+          )}
+
+          {goalkeeperResponseData && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Goalkeeper Response Summary</Text>
+              <Text style={styles.row}>
+                <Text style={styles.label}>Reaction Direction:</Text>{' '}
+                {goalkeeperResponseData.reactionDirection}
+              </Text>
+              <Text style={styles.row}>
+                <Text style={styles.label}>Timing Note:</Text>{' '}
+                {goalkeeperResponseData.reactionTimingNote || 'None provided'}
+              </Text>
+              <Text style={styles.row}>
+                <Text style={styles.label}>Save Result:</Text>{' '}
+                {goalkeeperResponseData.saveAttemptResult}
+              </Text>
+              <Text style={styles.row}>
+                <Text style={styles.label}>Response Video Selected:</Text>{' '}
+                {goalkeeperResponseData.responseVideoSelected ? 'Yes' : 'No'}
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Sample Output</Text>
+            <Text style={styles.row}>
+              <Text style={styles.label}>Shot Direction:</Text> Top right
+            </Text>
+            <Text style={styles.row}>
+              <Text style={styles.label}>Shot Height:</Text> High
+            </Text>
+            <Text style={styles.row}>
+              <Text style={styles.label}>Reaction Side:</Text> Right
+            </Text>
+            <Text style={styles.row}>
+              <Text style={styles.label}>Reaction Time:</Text> 0.41s
+            </Text>
+            <Text style={styles.row}>
+              <Text style={styles.label}>Outcome:</Text> Late save attempt
+            </Text>
+          </View>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -64,6 +108,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F4F7FB',
+  },
+  scrollContent: {
+    paddingBottom: 32,
   },
   content: {
     flex: 1,

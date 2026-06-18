@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Alert,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -11,14 +12,14 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
 import { useChallenge } from '../context/ChallengeContext';
-import type { CameraAngle } from '../types/challenge';
+import type { CameraAngle, ShooterUploadData } from '../types/challenge';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ShooterUpload'>;
 
 const cameraAngleOptions: CameraAngle[] = ['Front', 'Side', 'Behind Goal', 'Custom'];
 
 export default function ShooterUploadScreen({ navigation }: Props) {
-  const { currentChallenge } = useChallenge();
+  const { currentChallenge, setShooterUploadData } = useChallenge();
   const [selectedCameraAngle, setSelectedCameraAngle] = useState<CameraAngle>('Front');
   const [shotNotes, setShotNotes] = useState('');
   const [videoSelected, setVideoSelected] = useState(false);
@@ -40,90 +41,102 @@ export default function ShooterUploadScreen({ navigation }: Props) {
       return;
     }
 
+    const shooterData: ShooterUploadData = {
+      cameraAngle: selectedCameraAngle,
+      shotNotes: shotNotes.trim(),
+      videoSelected,
+    };
+
+    setShooterUploadData(shooterData);
     navigation.navigate('GoalkeeperResponse');
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Shooter Upload</Text>
-        <Text style={styles.subtitle}>
-          This screen represents where the shooter records or uploads the shot and captures basic metadata for version 1.
-        </Text>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Challenge Setup</Text>
-          <Text style={styles.cardText}>Challenge: {currentChallenge.challengeName}</Text>
-          <Text style={styles.cardText}>Opponent: {currentChallenge.opponent}</Text>
-          <Text style={styles.cardText}>
-            Cue-hiding method: {currentChallenge.occlusionMethod}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          <Text style={styles.title}>Shooter Upload</Text>
+          <Text style={styles.subtitle}>
+            This screen represents where the shooter records or uploads the shot and captures basic metadata for version 1.
           </Text>
-        </View>
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Shooter Input</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Challenge Setup</Text>
+            <Text style={styles.cardText}>Challenge: {currentChallenge.challengeName}</Text>
+            <Text style={styles.cardText}>Opponent: {currentChallenge.opponent}</Text>
+            <Text style={styles.cardText}>
+              Cue-hiding method: {currentChallenge.occlusionMethod}
+            </Text>
+          </View>
 
-          <Text style={styles.label}>Camera Angle</Text>
-          <View style={styles.optionRow}>
-            {cameraAngleOptions.map((option) => {
-              const isSelected = selectedCameraAngle === option;
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Shooter Input</Text>
 
-              return (
-                <TouchableOpacity
-                  key={option}
-                  style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
-                  onPress={() => setSelectedCameraAngle(option)}
-                >
-                  <Text
-                    style={[styles.optionButtonText, isSelected && styles.optionButtonTextSelected]}
+            <Text style={styles.label}>Camera Angle</Text>
+            <View style={styles.optionRow}>
+              {cameraAngleOptions.map((option) => {
+                const isSelected = selectedCameraAngle === option;
+
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
+                    onPress={() => setSelectedCameraAngle(option)}
                   >
-                    {option}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+                    <Text
+                      style={[styles.optionButtonText, isSelected && styles.optionButtonTextSelected]}
+                    >
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-          <Text style={styles.label}>Shot Notes</Text>
-          <TextInput
-            style={[styles.input, styles.notesInput]}
-            placeholder="Example: right-footed shot, hidden by black curtain, aiming high right"
-            value={shotNotes}
-            onChangeText={setShotNotes}
-            multiline
-          />
+            <Text style={styles.label}>Shot Notes</Text>
+            <TextInput
+              style={[styles.input, styles.notesInput]}
+              placeholder="Example: right-footed shot, hidden by black curtain, aiming high right"
+              value={shotNotes}
+              onChangeText={setShotNotes}
+              multiline
+            />
 
-          <Text style={styles.label}>Shot Video</Text>
-          <TouchableOpacity
-            style={[styles.videoButton, videoSelected && styles.videoButtonSelected]}
-            onPress={() => setVideoSelected((prev) => !prev)}
-          >
-            <Text
-              style={[
-                styles.videoButtonText,
-                videoSelected && styles.videoButtonTextSelected,
-              ]}
+            <Text style={styles.label}>Shot Video</Text>
+            <TouchableOpacity
+              style={[styles.videoButton, videoSelected && styles.videoButtonSelected]}
+              onPress={() => setVideoSelected((prev) => !prev)}
             >
-              {videoSelected ? 'Shot Video Selected' : 'Mark Shot Video as Selected'}
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.videoButtonText,
+                  videoSelected && styles.videoButtonTextSelected,
+                ]}
+              >
+                {videoSelected ? 'Shot Video Selected' : 'Mark Shot Video as Selected'}
+              </Text>
+            </TouchableOpacity>
 
-          <View style={styles.summaryBox}>
-            <Text style={styles.summaryTitle}>Current Shooter Metadata</Text>
-            <Text style={styles.summaryText}>Camera angle: {selectedCameraAngle}</Text>
-            <Text style={styles.summaryText}>
-              Shot notes: {shotNotes.trim() ? shotNotes : 'None yet'}
-            </Text>
-            <Text style={styles.summaryText}>
-              Video selected: {videoSelected ? 'Yes' : 'No'}
-            </Text>
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryTitle}>Current Shooter Metadata</Text>
+              <Text style={styles.summaryText}>Camera angle: {selectedCameraAngle}</Text>
+              <Text style={styles.summaryText}>
+                Shot notes: {shotNotes.trim() ? shotNotes : 'None yet'}
+              </Text>
+              <Text style={styles.summaryText}>
+                Video selected: {videoSelected ? 'Yes' : 'No'}
+              </Text>
+            </View>
           </View>
-        </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleContinue}>
-          <Text style={styles.buttonText}>Continue to Goalkeeper Response</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity style={styles.button} onPress={handleContinue}>
+            <Text style={styles.buttonText}>Continue to Goalkeeper Response</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -132,6 +145,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F4F7FB',
+  },
+  scrollContent: {
+    paddingBottom: 32,
   },
   content: {
     flex: 1,
