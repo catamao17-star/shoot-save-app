@@ -1,12 +1,15 @@
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useChallenge } from '../context/ChallengeContext';
 
 type Props = {
   navigation: any;
 };
 
 export default function HomeScreen({ navigation }: Props) {
+  const { currentChallenge, shooterUploadData, goalkeeperResponseData } = useChallenge();
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -24,15 +27,43 @@ export default function HomeScreen({ navigation }: Props) {
           </Text>
         </View>
 
+        {currentChallenge && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Current Challenge</Text>
+            <Text style={styles.cardText}>
+              <Text style={styles.label}>Challenge:</Text> {currentChallenge.challengeName}
+            </Text>
+            <Text style={styles.cardText}>
+              <Text style={styles.label}>Opponent:</Text> {currentChallenge.opponent}
+            </Text>
+            <Text style={styles.cardText}>
+              <Text style={styles.label}>Cue-hiding method:</Text> {currentChallenge.occlusionMethod}
+            </Text>
+            <Text style={styles.cardText}>
+              <Text style={styles.label}>Shooter data:</Text>{' '}
+              {shooterUploadData ? 'Completed' : 'Not completed'}
+            </Text>
+            <Text style={styles.cardText}>
+              <Text style={styles.label}>Goalkeeper data:</Text>{' '}
+              {goalkeeperResponseData ? 'Completed' : 'Not completed'}
+            </Text>
+          </View>
+        )}
+
         <TouchableOpacity
           style={styles.primaryButton}
           onPress={() => navigation.navigate('CreateChallenge')}
         >
-          <Text style={styles.primaryButtonText}>Create Challenge</Text>
+          <Text style={styles.primaryButtonText}>
+            {currentChallenge ? 'Create New Challenge' : 'Create Challenge'}
+          </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Join Challenge</Text>
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={() => navigation.navigate('Results')}
+        >
+          <Text style={styles.secondaryButtonText}>View Current Results</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -66,7 +97,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 20,
-    marginBottom: 28,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 10,
@@ -77,12 +108,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   cardText: {
     fontSize: 15,
     lineHeight: 22,
     color: '#4B5563',
+    marginBottom: 4,
+  },
+  label: {
+    fontWeight: '700',
+    color: '#111827',
   },
   primaryButton: {
     backgroundColor: '#111827',
