@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useChallenge } from '../context/ChallengeContext';
 
 type Props = {
@@ -8,7 +8,33 @@ type Props = {
 };
 
 export default function HomeScreen({ navigation }: Props) {
-  const { currentChallenge, shooterUploadData, goalkeeperResponseData } = useChallenge();
+  const {
+    currentChallenge,
+    shooterUploadData,
+    goalkeeperResponseData,
+    setCurrentChallenge,
+    setShooterUploadData,
+    setGoalkeeperResponseData,
+  } = useChallenge();
+
+  const handleResetChallenge = () => {
+    Alert.alert(
+      'Reset current challenge',
+      'Are you sure you want to clear the current challenge and all related data?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            setCurrentChallenge(null);
+            setShooterUploadData(null);
+            setGoalkeeperResponseData(null);
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -65,6 +91,12 @@ export default function HomeScreen({ navigation }: Props) {
         >
           <Text style={styles.secondaryButtonText}>View Current Results</Text>
         </TouchableOpacity>
+
+        {currentChallenge && (
+          <TouchableOpacity style={styles.resetButton} onPress={handleResetChallenge}>
+            <Text style={styles.resetButtonText}>Reset Challenge</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -137,9 +169,21 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
+    marginBottom: 14,
   },
   secondaryButtonText: {
     color: '#111827',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  resetButton: {
+    backgroundColor: '#FEE2E2',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  resetButtonText: {
+    color: '#B91C1C',
     fontSize: 16,
     fontWeight: '700',
   },
