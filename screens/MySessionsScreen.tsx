@@ -147,6 +147,26 @@ export default function MySessionsScreen({ navigation }: Props) {
     navigation.navigate('Results');
   };
 
+  const handleWatchShooterVideo = (session: ChallengeSession) => {
+    if (!session.shooterUpload?.videoFilename) {
+      Alert.alert('No shooter video', 'This session does not have a shooter video yet.');
+      return;
+    }
+
+    loadSessionObject(session);
+    navigation.navigate('Results');
+  };
+
+  const handleWatchGoalkeeperVideo = (session: ChallengeSession) => {
+    if (!session.goalkeeperResponse?.videoFilename) {
+      Alert.alert('No goalkeeper video', 'This session does not have a goalkeeper video yet.');
+      return;
+    }
+
+    loadSessionObject(session);
+    navigation.navigate('Results');
+  };
+
   const handleRefresh = async () => {
     await loadFirstPage(true);
   };
@@ -326,6 +346,9 @@ export default function MySessionsScreen({ navigation }: Props) {
                     ? 'Continue Goalkeeper Step'
                     : 'Open Final Results';
 
+                const hasShooterVideo = !!session.shooterUpload?.videoFilename;
+                const hasGoalkeeperVideo = !!session.goalkeeperResponse?.videoFilename;
+
                 return (
                   <View
                     key={`${session.remoteId ?? session.challenge.id}`}
@@ -352,28 +375,62 @@ export default function MySessionsScreen({ navigation }: Props) {
                       <View
                         style={[
                           styles.mediaBadge,
-                          session.shooterUpload?.videoFilename
-                            ? styles.mediaBadgeReady
-                            : styles.mediaBadgeMissing,
+                          hasShooterVideo ? styles.mediaBadgeReady : styles.mediaBadgeMissing,
                         ]}
                       >
                         <Text style={styles.mediaBadgeText}>
-                          Shooter {session.shooterUpload?.videoFilename ? 'Attached' : 'Missing'}
+                          Shooter {hasShooterVideo ? 'Attached' : 'Missing'}
                         </Text>
                       </View>
 
                       <View
                         style={[
                           styles.mediaBadge,
-                          session.goalkeeperResponse?.videoFilename
-                            ? styles.mediaBadgeReady
-                            : styles.mediaBadgeMissing,
+                          hasGoalkeeperVideo ? styles.mediaBadgeReady : styles.mediaBadgeMissing,
                         ]}
                       >
                         <Text style={styles.mediaBadgeText}>
-                          Goalkeeper {session.goalkeeperResponse?.videoFilename ? 'Attached' : 'Missing'}
+                          Goalkeeper {hasGoalkeeperVideo ? 'Attached' : 'Missing'}
                         </Text>
                       </View>
+                    </View>
+
+                    <View style={styles.mediaActionRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.mediaActionButton,
+                          !hasShooterVideo && styles.mediaActionButtonDisabled,
+                        ]}
+                        onPress={() => handleWatchShooterVideo(session)}
+                        disabled={!hasShooterVideo}
+                      >
+                        <Text
+                          style={[
+                            styles.mediaActionButtonText,
+                            !hasShooterVideo && styles.mediaActionButtonTextDisabled,
+                          ]}
+                        >
+                          Watch Shooter Video
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.mediaActionButton,
+                          !hasGoalkeeperVideo && styles.mediaActionButtonDisabled,
+                        ]}
+                        onPress={() => handleWatchGoalkeeperVideo(session)}
+                        disabled={!hasGoalkeeperVideo}
+                      >
+                        <Text
+                          style={[
+                            styles.mediaActionButtonText,
+                            !hasGoalkeeperVideo && styles.mediaActionButtonTextDisabled,
+                          ]}
+                        >
+                          Watch Goalkeeper Video
+                        </Text>
+                      </TouchableOpacity>
                     </View>
 
                     <TouchableOpacity
@@ -597,12 +654,36 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
   },
+  mediaActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  mediaActionButton: {
+    flex: 1,
+    backgroundColor: '#DBEAFE',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  mediaActionButtonDisabled: {
+    backgroundColor: '#E5E7EB',
+  },
+  mediaActionButtonText: {
+    color: '#1D4ED8',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  mediaActionButtonTextDisabled: {
+    color: '#9CA3AF',
+  },
   openButton: {
     backgroundColor: '#E5E7EB',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 14,
+    marginTop: 12,
   },
   openButtonText: {
     color: '#111827',
