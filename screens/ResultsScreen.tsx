@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Alert,
@@ -13,6 +13,7 @@ import * as Clipboard from 'expo-clipboard';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { saveSessionToSupabase } from '../services/sessionService';
 import { createSignedVideoUrl } from '../services/storageService';
+import { analyzeSession } from '../services/analysisService';
 import { useChallenge } from '../context/ChallengeContext';
 import ProgressSteps from '../components/ProgressSteps';
 import type { QualityRating } from '../types/session';
@@ -112,11 +113,14 @@ export default function ResultsScreen({ navigation }: Props) {
     (shooterUpload?.videoFilename?.trim() ? 10 : 0) +
     (goalkeeperResponse?.videoFilename?.trim() ? 10 : 0);
 
+  const analysis = useMemo(() => analyzeSession(currentSession), [currentSession]);
+
   const exportPayload = {
     remoteId,
     challenge,
     status,
     completenessScore,
+    analysis,
     analystNotes: analystNotes || '',
     qualityChecklist,
     shooterUpload,
@@ -222,6 +226,34 @@ export default function ResultsScreen({ navigation }: Props) {
             <Text style={styles.remoteIdText}>
               Remote ID: {remoteId ?? 'Not saved yet'}
             </Text>
+          </View>
+
+          <View style={styles.analysisCard}>
+            <Text style={styles.cardTitle}>Automatic Session Analysis</Text>
+            <Text style={styles.analysisScore}>{analysis.readinessScore}/100</Text>
+            <Text style={styles.analysisVerdict}>{analysis.verdict}</Text>
+
+            <Text style={styles.analysisSectionTitle}>Flags</Text>
+            {analysis.flags.length > 0 ? (
+              analysis.flags.map((flag, index) => (
+                <Text key={index} style={styles.analysisItem}>
+                  • {flag}
+                </Text>
+              ))
+            ) : (
+              <Text style={styles.analysisItem}>• No major flags detected.</Text>
+            )}
+
+            <Text style={styles.analysisSectionTitle}>Recommendations</Text>
+            {analysis.recommendations.length > 0 ? (
+              analysis.recommendations.map((item, index) => (
+                <Text key={index} style={styles.analysisItem}>
+                  • {item}
+                </Text>
+              ))
+            ) : (
+              <Text style={styles.analysisItem}>• No recommendations right now.</Text>
+            )}
           </View>
 
           <View style={styles.card}>
@@ -404,6 +436,39 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+  },
+  analysisCard: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  analysisScore: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: '#1D4ED8',
+    marginBottom: 4,
+  },
+  analysisVerdict: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1E3A8A',
+    marginBottom: 14,
+  },
+  analysisSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  analysisItem: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#374151',
+    marginBottom: 4,
   },
   errorCard: {
     backgroundColor: '#FEF2F2',
