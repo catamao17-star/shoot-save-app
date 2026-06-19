@@ -5,6 +5,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -40,6 +41,7 @@ export default function MySessionsScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<FilterOption>('all');
   const [selectedSort, setSelectedSort] = useState<SortOption>('newest');
+  const [searchText, setSearchText] = useState('');
 
   const loadSessions = async (refresh = false) => {
     try {
@@ -70,9 +72,19 @@ export default function MySessionsScreen({ navigation }: Props) {
 
   const visibleSessions = useMemo(() => {
     let result = [...sessions];
+    const query = searchText.trim().toLowerCase();
 
     if (selectedFilter !== 'all') {
       result = result.filter((session) => session.status === selectedFilter);
+    }
+
+    if (query) {
+      result = result.filter((session) => {
+        const challengeName = session.challenge.challengeName.toLowerCase();
+        const opponent = session.challenge.opponent.toLowerCase();
+
+        return challengeName.includes(query) || opponent.includes(query);
+      });
     }
 
     result.sort((a, b) => {
@@ -83,7 +95,7 @@ export default function MySessionsScreen({ navigation }: Props) {
     });
 
     return result;
-  }, [sessions, selectedFilter, selectedSort]);
+  }, [sessions, selectedFilter, selectedSort, searchText]);
 
   const handleOpenSession = (session: ChallengeSession) => {
     loadSessionObject(session);
@@ -183,6 +195,14 @@ export default function MySessionsScreen({ navigation }: Props) {
           </Text>
 
           <View style={styles.controlCard}>
+            <Text style={styles.controlTitle}>Search</Text>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by challenge name or opponent"
+              value={searchText}
+              onChangeText={setSearchText}
+            />
+
             <Text style={styles.controlTitle}>Filter by Status</Text>
             <View style={styles.filterRow}>
               {filterOptions.map((option) => {
@@ -263,7 +283,7 @@ export default function MySessionsScreen({ navigation }: Props) {
           ) : visibleSessions.length === 0 ? (
             <View style={styles.emptyCard}>
               <Text style={styles.emptyText}>
-                No sessions match the current filter.
+                No sessions match the current search or filter.
               </Text>
             </View>
           ) : (
@@ -357,6 +377,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     marginBottom: 10,
+  },
+  searchInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    marginBottom: 18,
   },
   filterRow: {
     flexDirection: 'row',
