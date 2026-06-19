@@ -14,6 +14,7 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import { saveSessionToSupabase } from '../services/sessionService';
 import { createSignedVideoUrl } from '../services/storageService';
 import { analyzeSession } from '../services/analysisService';
+import { exportSessionReportPdf, shareSessionReportPdf } from '../services/reportService';
 import { useChallenge } from '../context/ChallengeContext';
 import ProgressSteps from '../components/ProgressSteps';
 import type { QualityRating } from '../types/session';
@@ -135,6 +136,22 @@ export default function ResultsScreen({ navigation }: Props) {
       Alert.alert('Copied', 'Session JSON copied to clipboard.');
     } catch {
       Alert.alert('Copy failed', 'Unable to copy JSON right now.');
+    }
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      const pdfUri = await exportSessionReportPdf({
+        session: currentSession,
+        analysis,
+        completenessScore,
+      });
+
+      await shareSessionReportPdf(pdfUri);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unexpected error while exporting report.';
+      Alert.alert('Export failed', message);
     }
   };
 
@@ -270,13 +287,16 @@ export default function ResultsScreen({ navigation }: Props) {
               <Text style={styles.label}>Challenge Created:</Text> Yes
             </Text>
             <Text style={styles.row}>
-              <Text style={styles.label}>Shooter Submitted:</Text> {isShooterComplete ? 'Yes' : 'No'}
+              <Text style={styles.label}>Shooter Submitted:</Text>{' '}
+              {isShooterComplete ? 'Yes' : 'No'}
             </Text>
             <Text style={styles.row}>
-              <Text style={styles.label}>Goalkeeper Submitted:</Text> {isGoalkeeperComplete ? 'Yes' : 'No'}
+              <Text style={styles.label}>Goalkeeper Submitted:</Text>{' '}
+              {isGoalkeeperComplete ? 'Yes' : 'No'}
             </Text>
             <Text style={styles.row}>
-              <Text style={styles.label}>Record Complete:</Text> {isRecordComplete ? 'Yes' : 'No'}
+              <Text style={styles.label}>Record Complete:</Text>{' '}
+              {isRecordComplete ? 'Yes' : 'No'}
             </Text>
           </View>
 
@@ -395,6 +415,10 @@ export default function ResultsScreen({ navigation }: Props) {
             </ScrollView>
           </View>
 
+          <TouchableOpacity style={styles.exportButton} onPress={handleExportPdf}>
+            <Text style={styles.exportButtonText}>Export PDF Report</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.saveButton, isSyncing && styles.saveButtonDisabled]}
             onPress={handleSaveToSupabase}
@@ -430,6 +454,7 @@ const styles = StyleSheet.create({
   content: { flex: 1, padding: 24 },
   title: { fontSize: 30, fontWeight: '800', color: '#111827', marginBottom: 8 },
   subtitle: { fontSize: 15, lineHeight: 22, color: '#4B5563', marginBottom: 24 },
+
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
@@ -438,6 +463,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
+
   analysisCard: {
     backgroundColor: '#EFF6FF',
     borderRadius: 18,
@@ -446,18 +472,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#BFDBFE',
   },
+
   analysisScore: {
     fontSize: 34,
     fontWeight: '800',
     color: '#1D4ED8',
     marginBottom: 4,
   },
+
   analysisVerdict: {
     fontSize: 16,
     fontWeight: '700',
     color: '#1E3A8A',
     marginBottom: 14,
   },
+
   analysisSectionTitle: {
     fontSize: 14,
     fontWeight: '700',
@@ -465,12 +494,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 6,
   },
+
   analysisItem: {
     fontSize: 14,
     lineHeight: 20,
     color: '#374151',
     marginBottom: 4,
   },
+
   errorCard: {
     backgroundColor: '#FEF2F2',
     borderRadius: 18,
@@ -479,20 +510,38 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FCA5A5',
   },
+
   errorTitle: {
     fontSize: 16,
     fontWeight: '700',
     color: '#991B1B',
     marginBottom: 8,
   },
+
   errorText: {
     fontSize: 14,
     lineHeight: 20,
     color: '#B91C1C',
   },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 },
-  row: { fontSize: 16, color: '#374151', marginBottom: 12 },
-  label: { fontWeight: '700', color: '#111827' },
+
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 12,
+  },
+
+  row: {
+    fontSize: 16,
+    color: '#374151',
+    marginBottom: 12,
+  },
+
+  label: {
+    fontWeight: '700',
+    color: '#111827',
+  },
+
   notesInput: {
     minHeight: 100,
     backgroundColor: '#FFFFFF',
@@ -502,6 +551,7 @@ const styles = StyleSheet.create({
     borderColor: '#D1D5DB',
     textAlignVertical: 'top',
   },
+
   checklistLabel: {
     fontSize: 14,
     fontWeight: '700',
@@ -509,46 +559,55 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 8,
   },
+
   optionRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
     marginBottom: 10,
   },
+
   optionButton: {
     backgroundColor: '#E5E7EB',
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 12,
   },
+
   optionButtonSelected: {
     backgroundColor: '#111827',
   },
+
   optionText: {
     color: '#111827',
     fontSize: 14,
     fontWeight: '600',
   },
+
   optionTextSelected: {
     color: '#FFFFFF',
   },
+
   scoreValue: {
     fontSize: 36,
     fontWeight: '800',
     color: '#111827',
     marginBottom: 8,
   },
+
   scoreNote: {
     fontSize: 14,
     lineHeight: 20,
     color: '#4B5563',
     marginBottom: 8,
   },
+
   remoteIdText: {
     fontSize: 14,
     color: '#2563EB',
     fontWeight: '600',
   },
+
   mediaTitle: {
     fontSize: 15,
     fontWeight: '700',
@@ -556,11 +615,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 8,
   },
+
   mediaEmpty: {
     fontSize: 14,
     color: '#6B7280',
     marginBottom: 8,
   },
+
   video: {
     width: '100%',
     height: 220,
@@ -568,29 +629,48 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
     marginBottom: 12,
   },
+
   jsonHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
+
   jsonText: {
     fontSize: 12,
     color: '#1F2937',
     fontFamily: 'Courier',
     lineHeight: 18,
   },
+
   copyButton: {
     backgroundColor: '#111827',
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 10,
   },
+
   copyButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },
+
+  exportButton: {
+    backgroundColor: '#DBEAFE',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+
+  exportButtonText: {
+    color: '#1D4ED8',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
   saveButton: {
     backgroundColor: '#DCFCE7',
     paddingVertical: 16,
@@ -600,46 +680,55 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#86EFAC',
   },
+
   saveButtonDisabled: {
     opacity: 0.6,
   },
+
   saveButtonText: {
     color: '#166534',
     fontSize: 16,
     fontWeight: '700',
   },
+
   actionBar: {
     marginTop: 8,
     gap: 12,
   },
+
   actionButtonPrimary: {
     backgroundColor: '#111827',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
   },
+
   actionButtonPrimaryText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
+
   actionButtonSecondary: {
     backgroundColor: '#E5E7EB',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
   },
+
   actionButtonSecondaryText: {
     color: '#111827',
     fontSize: 16,
     fontWeight: '700',
   },
+
   actionButtonDanger: {
     backgroundColor: '#FEE2E2',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
   },
+
   actionButtonDangerText: {
     color: '#B91C1C',
     fontSize: 16,
