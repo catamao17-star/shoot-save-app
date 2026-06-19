@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,6 +28,45 @@ export default function HomeScreen({ navigation }: Props) {
     loadSessionObject,
     resetSession,
   } = useChallenge();
+
+  const fetchSessionsFromSupabase = async (showAlert = false) => {
+    try {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        if (showAlert) {
+          Alert.alert('Load failed', error.message);
+        }
+        return;
+      }
+
+      const parsedSessions: ChallengeSession[] = ((data ?? []) as SessionRow[])
+        .map((row) => row.payload as ChallengeSession)
+        .filter(Boolean);
+
+      setSessionHistory(parsedSessions);
+
+      if (!currentSession && parsedSessions.length > 0) {
+        loadSessionObject(parsedSessions[0]);
+      }
+
+      if (showAlert) {
+        Alert.alert('Loaded', `${parsedSessions.length} session(s) loaded from Supabase.`);
+      }
+    } catch (error) {
+      if (showAlert) {
+        Alert.alert('Load failed', 'Unexpected error while loading sessions.');
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchSessionsFromSupabase(false);
+  }, []);
 
   const handleResetChallenge = () => {
     Alert.alert(
@@ -67,32 +107,7 @@ export default function HomeScreen({ navigation }: Props) {
   };
 
   const handleLoadFromSupabase = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('sessions')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) {
-        Alert.alert('Load failed', error.message);
-        return;
-      }
-
-      const parsedSessions: ChallengeSession[] = ((data ?? []) as SessionRow[])
-        .map((row) => row.payload as ChallengeSession)
-        .filter(Boolean);
-
-      setSessionHistory(parsedSessions);
-
-      if (parsedSessions.length > 0) {
-        loadSessionObject(parsedSessions[0]);
-      }
-
-      Alert.alert('Loaded', `${parsedSessions.length} session(s) loaded from Supabase.`);
-    } catch (error) {
-      Alert.alert('Load failed', 'Unexpected error while loading sessions.');
-    }
+    await fetchSessionsFromSupabase(true);
   };
 
   const challenge = currentSession?.challenge;
@@ -119,7 +134,7 @@ export default function HomeScreen({ navigation }: Props) {
           </View>
 
           <TouchableOpacity style={styles.loadButton} onPress={handleLoadFromSupabase}>
-            <Text style={styles.loadButtonText}>Load from Supabase</Text>
+            <Text style={styles.loadButtonText}>Refresh from Supabase</Text>
           </TouchableOpacity>
 
           {challenge && (
@@ -199,9 +214,7 @@ export default function HomeScreen({ navigation }: Props) {
                   <Text style={styles.historyItemText}>
                     Opponent: {session.challenge.opponent}
                   </Text>
-                  <Text style={styles.historyItemText}>
-                    Status: {session.status}
-                  </Text>
+                  <Text style={styles.historyItemText}>Status: {session.status}</Text>
                   <Text style={styles.historyItemText}>
                     Created: {new Date(session.challenge.createdAt).toLocaleString()}
                   </Text>
