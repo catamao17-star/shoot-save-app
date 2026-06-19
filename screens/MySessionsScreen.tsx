@@ -348,6 +348,34 @@ export default function MySessionsScreen({ navigation }: Props) {
                       Created: {new Date(session.challenge.createdAt).toLocaleString()}
                     </Text>
 
+                    <View style={styles.mediaBadgeRow}>
+                      <View
+                        style={[
+                          styles.mediaBadge,
+                          session.shooterUpload?.videoFilename
+                            ? styles.mediaBadgeReady
+                            : styles.mediaBadgeMissing,
+                        ]}
+                      >
+                        <Text style={styles.mediaBadgeText}>
+                          Shooter {session.shooterUpload?.videoFilename ? 'Attached' : 'Missing'}
+                        </Text>
+                      </View>
+
+                      <View
+                        style={[
+                          styles.mediaBadge,
+                          session.goalkeeperResponse?.videoFilename
+                            ? styles.mediaBadgeReady
+                            : styles.mediaBadgeMissing,
+                        ]}
+                      >
+                        <Text style={styles.mediaBadgeText}>
+                          Goalkeeper {session.goalkeeperResponse?.videoFilename ? 'Attached' : 'Missing'}
+                        </Text>
+                      </View>
+                    </View>
+
                     <TouchableOpacity
                       style={styles.openButton}
                       onPress={() => handleOpenSession(session)}
@@ -546,6 +574,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4B5563',
     marginBottom: 4,
+  },
+  mediaBadgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  mediaBadge: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+  },
+  mediaBadgeReady: {
+    backgroundColor: '#DCFCE7',
+  },
+  mediaBadgeMissing: {
+    backgroundColor: '#FEE2E2',
+  },
+  mediaBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#111827',
   },
   openButton: {
     backgroundColor: '#E5E7EB',

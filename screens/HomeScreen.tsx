@@ -89,6 +89,12 @@ export default function HomeScreen({ navigation }: Props) {
     const goalkeeperSubmitted = sessionHistory.filter(
       (session) => session.status === 'goalkeeper_submitted'
     ).length;
+    const shooterMediaAttached = sessionHistory.filter(
+      (session) => !!session.shooterUpload?.videoFilename
+    ).length;
+    const goalkeeperMediaAttached = sessionHistory.filter(
+      (session) => !!session.goalkeeperResponse?.videoFilename
+    ).length;
 
     const completionRate = total > 0 ? Math.round((complete / total) * 100) : 0;
 
@@ -106,6 +112,8 @@ export default function HomeScreen({ navigation }: Props) {
       created,
       shooterSubmitted,
       goalkeeperSubmitted,
+      shooterMediaAttached,
+      goalkeeperMediaAttached,
       completionRate,
       latestSession,
     };
@@ -179,6 +187,9 @@ export default function HomeScreen({ navigation }: Props) {
   const goalkeeperResponse = currentSession?.goalkeeperResponse;
   const sessionStatus = currentSession?.status;
 
+  const shooterMediaReady = !!shooterUpload?.videoFilename;
+  const goalkeeperMediaReady = !!goalkeeperResponse?.videoFilename;
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
@@ -237,6 +248,16 @@ export default function HomeScreen({ navigation }: Props) {
                 <Text style={styles.statValue}>{dashboardStats.goalkeeperSubmitted}</Text>
                 <Text style={styles.statLabel}>Goalkeeper Done</Text>
               </View>
+
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{dashboardStats.shooterMediaAttached}</Text>
+                <Text style={styles.statLabel}>Shooter Media</Text>
+              </View>
+
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{dashboardStats.goalkeeperMediaAttached}</Text>
+                <Text style={styles.statLabel}>Goalkeeper Media</Text>
+              </View>
             </View>
 
             <View style={styles.latestBox}>
@@ -247,12 +268,41 @@ export default function HomeScreen({ navigation }: Props) {
                   : 'No sessions yet'}
               </Text>
               {dashboardStats.latestSession && (
-                <Text style={styles.latestSubtext}>
-                  {dashboardStats.latestSession.challenge.opponent} ·{' '}
-                  {new Date(
-                    dashboardStats.latestSession.challenge.createdAt
-                  ).toLocaleString()}
-                </Text>
+                <>
+                  <Text style={styles.latestSubtext}>
+                    {dashboardStats.latestSession.challenge.opponent} ·{' '}
+                    {new Date(
+                      dashboardStats.latestSession.challenge.createdAt
+                    ).toLocaleString()}
+                  </Text>
+                  <View style={styles.mediaBadgeRow}>
+                    <View
+                      style={[
+                        styles.mediaBadge,
+                        dashboardStats.latestSession.shooterUpload?.videoFilename
+                          ? styles.mediaBadgeReady
+                          : styles.mediaBadgeMissing,
+                      ]}
+                    >
+                      <Text style={styles.mediaBadgeText}>
+                        Shooter {dashboardStats.latestSession.shooterUpload?.videoFilename ? 'Attached' : 'Missing'}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={[
+                        styles.mediaBadge,
+                        dashboardStats.latestSession.goalkeeperResponse?.videoFilename
+                          ? styles.mediaBadgeReady
+                          : styles.mediaBadgeMissing,
+                      ]}
+                    >
+                      <Text style={styles.mediaBadgeText}>
+                        Goalkeeper {dashboardStats.latestSession.goalkeeperResponse?.videoFilename ? 'Attached' : 'Missing'}
+                      </Text>
+                    </View>
+                  </View>
+                </>
               )}
             </View>
           </View>
@@ -319,6 +369,30 @@ export default function HomeScreen({ navigation }: Props) {
               <Text style={styles.cardText}>
                 <Text style={styles.label}>Session status:</Text> {sessionStatus}
               </Text>
+
+              <View style={styles.mediaBadgeRow}>
+                <View
+                  style={[
+                    styles.mediaBadge,
+                    shooterMediaReady ? styles.mediaBadgeReady : styles.mediaBadgeMissing,
+                  ]}
+                >
+                  <Text style={styles.mediaBadgeText}>
+                    Shooter {shooterMediaReady ? 'Attached' : 'Missing'}
+                  </Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.mediaBadge,
+                    goalkeeperMediaReady ? styles.mediaBadgeReady : styles.mediaBadgeMissing,
+                  ]}
+                >
+                  <Text style={styles.mediaBadgeText}>
+                    Goalkeeper {goalkeeperMediaReady ? 'Attached' : 'Missing'}
+                  </Text>
+                </View>
+              </View>
             </View>
           )}
 
@@ -372,6 +446,35 @@ export default function HomeScreen({ navigation }: Props) {
                   <Text style={styles.historyItemText}>
                     Created: {new Date(session.challenge.createdAt).toLocaleString()}
                   </Text>
+
+                  <View style={styles.mediaBadgeRow}>
+                    <View
+                      style={[
+                        styles.mediaBadge,
+                        session.shooterUpload?.videoFilename
+                          ? styles.mediaBadgeReady
+                          : styles.mediaBadgeMissing,
+                      ]}
+                    >
+                      <Text style={styles.mediaBadgeText}>
+                        Shooter {session.shooterUpload?.videoFilename ? 'Attached' : 'Missing'}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={[
+                        styles.mediaBadge,
+                        session.goalkeeperResponse?.videoFilename
+                          ? styles.mediaBadgeReady
+                          : styles.mediaBadgeMissing,
+                      ]}
+                    >
+                      <Text style={styles.mediaBadgeText}>
+                        Goalkeeper {session.goalkeeperResponse?.videoFilename ? 'Attached' : 'Missing'}
+                      </Text>
+                    </View>
+                  </View>
+
                   <Text style={styles.historyOpenText}>Tap to open session</Text>
                 </TouchableOpacity>
               ))
@@ -483,6 +586,7 @@ const styles = StyleSheet.create({
   latestSubtext: {
     fontSize: 13,
     color: '#6B7280',
+    marginBottom: 8,
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -517,6 +621,28 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 10 },
   cardText: { fontSize: 15, lineHeight: 22, color: '#4B5563', marginBottom: 4 },
   label: { fontWeight: '700', color: '#111827' },
+  mediaBadgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  mediaBadge: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+  },
+  mediaBadgeReady: {
+    backgroundColor: '#DCFCE7',
+  },
+  mediaBadgeMissing: {
+    backgroundColor: '#FEE2E2',
+  },
+  mediaBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#111827',
+  },
   loadButton: {
     backgroundColor: '#DCFCE7',
     paddingVertical: 16,
