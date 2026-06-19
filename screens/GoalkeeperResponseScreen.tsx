@@ -85,6 +85,7 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
             <Text style={styles.cardText}>Challenge: {challenge.challengeName}</Text>
             <Text style={styles.cardText}>Opponent: {challenge.opponent}</Text>
             <Text style={styles.cardText}>Cue-hiding method: {challenge.occlusionMethod}</Text>
+            <Text style={styles.cardText}>Current session status: {currentSession.status}</Text>
           </View>
 
           {shooterUpload && (

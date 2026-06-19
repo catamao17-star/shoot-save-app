@@ -26,6 +26,7 @@ export function ChallengeProvider({ children }: Props) {
       challenge,
       shooterUpload: null,
       goalkeeperResponse: null,
+      status: 'created',
     });
   };
 
@@ -36,6 +37,7 @@ export function ChallengeProvider({ children }: Props) {
       return {
         ...prev,
         shooterUpload: data,
+        status: data ? 'shooter_submitted' : 'created',
       };
     });
   };
@@ -47,6 +49,7 @@ export function ChallengeProvider({ children }: Props) {
       return {
         ...prev,
         goalkeeperResponse: data,
+        status: data ? 'complete' : prev.shooterUpload ? 'shooter_submitted' : 'created',
       };
     });
   };

@@ -30,6 +30,7 @@ export default function HomeScreen({ navigation }: Props) {
   const challenge = currentSession?.challenge;
   const shooterUpload = currentSession?.shooterUpload;
   const goalkeeperResponse = currentSession?.goalkeeperResponse;
+  const sessionStatus = currentSession?.status;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -71,6 +72,9 @@ export default function HomeScreen({ navigation }: Props) {
             </Text>
             <Text style={styles.cardText}>
               <Text style={styles.label}>Goalkeeper data:</Text> {goalkeeperResponse ? 'Completed' : 'Not completed'}
+            </Text>
+            <Text style={styles.cardText}>
+              <Text style={styles.label}>Session status:</Text> {sessionStatus}
             </Text>
           </View>
         )}

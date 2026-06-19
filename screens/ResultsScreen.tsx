@@ -17,11 +17,11 @@ export default function ResultsScreen() {
     );
   }
 
-  const { challenge, shooterUpload, goalkeeperResponse } = currentSession;
+  const { challenge, shooterUpload, goalkeeperResponse, status } = currentSession;
 
   const isShooterComplete = !!shooterUpload;
   const isGoalkeeperComplete = !!goalkeeperResponse;
-  const isRecordComplete = !!challenge && isShooterComplete && isGoalkeeperComplete;
+  const isRecordComplete = status === 'complete';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -36,6 +36,9 @@ export default function ResultsScreen() {
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Completion Status</Text>
+            <Text style={styles.row}>
+              <Text style={styles.label}>Session Status:</Text> {status}
+            </Text>
             <Text style={styles.row}>
               <Text style={styles.label}>Challenge Created:</Text> Yes
             </Text>
@@ -56,6 +59,7 @@ export default function ResultsScreen() {
             <Text style={styles.codeLine}>{'{'}</Text>
             <Text style={styles.codeLine}>{'  '}challengeId: "{challenge.id}",</Text>
             <Text style={styles.codeLine}>{'  '}createdAt: "{challenge.createdAt}",</Text>
+            <Text style={styles.codeLine}>{'  '}status: "{status}",</Text>
             <Text style={styles.codeLine}>{'  '}challengeName: "{challenge.challengeName}",</Text>
             <Text style={styles.codeLine}>{'  '}opponent: "{challenge.opponent}",</Text>
             <Text style={styles.codeLine}>{'  '}occlusionMethod: "{challenge.occlusionMethod}",</Text>
@@ -187,10 +191,5 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 },
   row: { fontSize: 16, color: '#374151', marginBottom: 12 },
   label: { fontWeight: '700', color: '#111827' },
-  codeLine: {
-    fontSize: 13,
-    color: '#1F2937',
-    fontFamily: 'Courier',
-    marginBottom: 4,
-  },
+  codeLine: { fontSize: 13, color: '#1F2937', fontFamily: 'Courier', marginBottom: 4 },
 });
