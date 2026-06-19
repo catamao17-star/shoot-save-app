@@ -7,13 +7,24 @@ type SessionRow = {
   challenge_id: string;
   session_status: string;
   completeness_score: number;
+  user_id: string;
   payload: ChallengeSession;
 };
 
 export async function fetchSessionsFromSupabase(limit = 10): Promise<ChallengeSession[]> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    throw new Error('No authenticated user found.');
+  }
+
   const { data, error } = await supabase
     .from('sessions')
     .select('*')
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -42,6 +53,15 @@ export async function saveSessionToSupabase(
   session: ChallengeSession,
   completenessScore: number
 ): Promise<SaveSessionResult> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    throw new Error('No authenticated user found.');
+  }
+
   const payload = {
     ...session,
     remoteId: session.remoteId,
@@ -51,6 +71,7 @@ export async function saveSessionToSupabase(
     const { data, error } = await supabase
       .from('sessions')
       .insert({
+        user_id: user.id,
         challenge_id: session.challenge.id,
         session_status: session.status,
         completeness_score: completenessScore,
@@ -72,6 +93,7 @@ export async function saveSessionToSupabase(
   const { error } = await supabase
     .from('sessions')
     .update({
+      user_id: user.id,
       challenge_id: session.challenge.id,
       session_status: session.status,
       completeness_score: completenessScore,

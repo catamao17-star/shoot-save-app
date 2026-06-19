@@ -1,7 +1,11 @@
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { ChallengeProvider, useChallenge } from './context/ChallengeContext';
+import type { Session } from '@supabase/supabase-js';
+import { supabase } from './lib/supabase';
+import { ChallengeProvider } from './context/ChallengeContext';
+import AuthScreen from './screens/AuthScreen';
 import HomeScreen from './screens/HomeScreen';
 import CreateChallengeScreen from './screens/CreateChallengeScreen';
 import ShooterUploadScreen from './screens/ShooterUploadScreen';
@@ -9,6 +13,7 @@ import GoalkeeperResponseScreen from './screens/GoalkeeperResponseScreen';
 import ResultsScreen from './screens/ResultsScreen';
 
 export type RootStackParamList = {
+  Auth: undefined;
   Home: undefined;
   CreateChallenge: undefined;
   ShooterUpload: undefined;
@@ -19,9 +24,25 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function AppNavigator() {
-  const { isHydrated } = useChallenge();
+  const [session, setSession] = useState<Session | null>(null);
+  const [isBooting, setIsBooting] = useState(true);
 
-  if (!isHydrated) {
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session ?? null);
+      setIsBooting(false);
+    });
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession ?? null);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  if (isBooting) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" />
@@ -31,12 +52,18 @@ function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Home">
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="CreateChallenge" component={CreateChallengeScreen} />
-        <Stack.Screen name="ShooterUpload" component={ShooterUploadScreen} />
-        <Stack.Screen name="GoalkeeperResponse" component={GoalkeeperResponseScreen} />
-        <Stack.Screen name="Results" component={ResultsScreen} />
+      <Stack.Navigator initialRouteName={session ? 'Home' : 'Auth'}>
+        {session ? (
+          <>
+            <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="CreateChallenge" component={CreateChallengeScreen} />
+            <Stack.Screen name="ShooterUpload" component={ShooterUploadScreen} />
+            <Stack.Screen name="GoalkeeperResponse" component={GoalkeeperResponseScreen} />
+            <Stack.Screen name="Results" component={ResultsScreen} />
+          </>
+        ) : (
+          <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );
