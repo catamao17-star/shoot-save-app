@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from 're
 import type { Challenge } from '../types/challenge';
 import type { ShooterUploadData } from '../types/challenge';
 import type { GoalkeeperResponseData } from '../types/challenge';
-import type { ChallengeSession } from '../types/session';
+import type { ChallengeSession, SessionQualityChecklist } from '../types/session';
 
 type ChallengeContextType = {
   currentSession: ChallengeSession | null;
@@ -11,6 +11,7 @@ type ChallengeContextType = {
   setShooterUploadData: (data: ShooterUploadData | null) => void;
   setGoalkeeperResponseData: (data: GoalkeeperResponseData | null) => void;
   setAnalystNotes: (notes: string) => void;
+  setQualityChecklist: (checklist: SessionQualityChecklist) => void;
   loadSessionFromHistory: (sessionId: string) => void;
   resetSession: () => void;
 };
@@ -32,6 +33,11 @@ export function ChallengeProvider({ children }: Props) {
       goalkeeperResponse: null,
       status: 'created',
       analystNotes: '',
+      qualityChecklist: {
+        cueHidingQuality: 'Okay',
+        cameraSetupQuality: 'Okay',
+        reactionClarity: 'Okay',
+      },
     });
   };
 
@@ -92,6 +98,28 @@ export function ChallengeProvider({ children }: Props) {
     });
   };
 
+  const setQualityChecklist = (checklist: SessionQualityChecklist) => {
+    setCurrentSession((prev) => {
+      if (!prev) return prev;
+
+      const updatedSession = {
+        ...prev,
+        qualityChecklist: checklist,
+      };
+
+      if (updatedSession.status === 'complete') {
+        setSessionHistory((history) => {
+          const withoutCurrent = history.filter(
+            (session) => session.challenge.id !== updatedSession.challenge.id
+          );
+          return [updatedSession, ...withoutCurrent];
+        });
+      }
+
+      return updatedSession;
+    });
+  };
+
   const loadSessionFromHistory = (sessionId: string) => {
     const sessionToLoad = sessionHistory.find((session) => session.challenge.id === sessionId);
     if (!sessionToLoad) return;
@@ -110,6 +138,7 @@ export function ChallengeProvider({ children }: Props) {
       setShooterUploadData,
       setGoalkeeperResponseData,
       setAnalystNotes,
+      setQualityChecklist,
       loadSessionFromHistory,
       resetSession,
     }),

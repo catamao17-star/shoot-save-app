@@ -10,13 +10,16 @@ import {
 } from 'react-native';
 import { useChallenge } from '../context/ChallengeContext';
 import ProgressSteps from '../components/ProgressSteps';
+import type { QualityRating } from '../types/session';
 
 type Props = {
   navigation: any;
 };
 
+const ratingOptions: QualityRating[] = ['Good', 'Okay', 'Poor'];
+
 export default function ResultsScreen({ navigation }: Props) {
-  const { currentSession, resetSession, setAnalystNotes } = useChallenge();
+  const { currentSession, resetSession, setAnalystNotes, setQualityChecklist } = useChallenge();
 
   if (!currentSession) {
     return (
@@ -29,7 +32,8 @@ export default function ResultsScreen({ navigation }: Props) {
     );
   }
 
-  const { challenge, shooterUpload, goalkeeperResponse, status, analystNotes } = currentSession;
+  const { challenge, shooterUpload, goalkeeperResponse, status, analystNotes, qualityChecklist } =
+    currentSession;
 
   const isShooterComplete = !!shooterUpload;
   const isGoalkeeperComplete = !!goalkeeperResponse;
@@ -59,6 +63,16 @@ export default function ResultsScreen({ navigation }: Props) {
 
   const handleGoHome = () => {
     navigation.navigate('Home');
+  };
+
+  const updateChecklistField = (
+    field: 'cueHidingQuality' | 'cameraSetupQuality' | 'reactionClarity',
+    value: QualityRating
+  ) => {
+    setQualityChecklist({
+      ...qualityChecklist,
+      [field]: value,
+    });
   };
 
   return (
@@ -93,6 +107,70 @@ export default function ResultsScreen({ navigation }: Props) {
           </View>
 
           <View style={styles.card}>
+            <Text style={styles.cardTitle}>Quality Checklist</Text>
+
+            <Text style={styles.checklistLabel}>Cue Hiding Quality</Text>
+            <View style={styles.optionRow}>
+              {ratingOptions.map((option) => {
+                const isSelected = qualityChecklist.cueHidingQuality === option;
+                return (
+                  <TouchableOpacity
+                    key={`cue-${option}`}
+                    style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
+                    onPress={() => updateChecklistField('cueHidingQuality', option)}
+                  >
+                    <Text
+                      style={[styles.optionText, isSelected && styles.optionTextSelected]}
+                    >
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={styles.checklistLabel}>Camera Setup Quality</Text>
+            <View style={styles.optionRow}>
+              {ratingOptions.map((option) => {
+                const isSelected = qualityChecklist.cameraSetupQuality === option;
+                return (
+                  <TouchableOpacity
+                    key={`camera-${option}`}
+                    style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
+                    onPress={() => updateChecklistField('cameraSetupQuality', option)}
+                  >
+                    <Text
+                      style={[styles.optionText, isSelected && styles.optionTextSelected]}
+                    >
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={styles.checklistLabel}>Reaction Clarity</Text>
+            <View style={styles.optionRow}>
+              {ratingOptions.map((option) => {
+                const isSelected = qualityChecklist.reactionClarity === option;
+                return (
+                  <TouchableOpacity
+                    key={`reaction-${option}`}
+                    style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
+                    onPress={() => updateChecklistField('reactionClarity', option)}
+                  >
+                    <Text
+                      style={[styles.optionText, isSelected && styles.optionTextSelected]}
+                    >
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.card}>
             <Text style={styles.cardTitle}>Analyst Notes</Text>
             <TextInput
               style={styles.notesInput}
@@ -110,6 +188,9 @@ export default function ResultsScreen({ navigation }: Props) {
             <Text style={styles.codeLine}>{'  '}createdAt: "{challenge.createdAt}",</Text>
             <Text style={styles.codeLine}>{'  '}status: "{status}",</Text>
             <Text style={styles.codeLine}>{'  '}analystNotes: "{analystNotes || 'None'}",</Text>
+            <Text style={styles.codeLine}>
+              {'  '}qualityChecklist: {'{'} cueHidingQuality: "{qualityChecklist.cueHidingQuality}", cameraSetupQuality: "{qualityChecklist.cameraSetupQuality}", reactionClarity: "{qualityChecklist.reactionClarity}" {'}'},
+            </Text>
             <Text style={styles.codeLine}>{'  '}challengeName: "{challenge.challengeName}",</Text>
             <Text style={styles.codeLine}>{'  '}opponent: "{challenge.opponent}",</Text>
             <Text style={styles.codeLine}>{'  '}occlusionMethod: "{challenge.occlusionMethod}",</Text>
@@ -264,6 +345,36 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D1D5DB',
     textAlignVertical: 'top',
+  },
+  checklistLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 10,
+  },
+  optionButton: {
+    backgroundColor: '#E5E7EB',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+  },
+  optionButtonSelected: {
+    backgroundColor: '#111827',
+  },
+  optionText: {
+    color: '#111827',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  optionTextSelected: {
+    color: '#FFFFFF',
   },
   actionBar: {
     marginTop: 8,
