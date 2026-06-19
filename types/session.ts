@@ -1,7 +1,7 @@
 import type {
-  Challenge,
-  ShooterUploadData,
+  ChallengeSetupData,
   GoalkeeperResponseData,
+  ShooterUploadData,
 } from './challenge';
 
 export type SessionStatus =
@@ -12,18 +12,26 @@ export type SessionStatus =
 
 export type QualityRating = 'Good' | 'Okay' | 'Poor';
 
-export type SessionQualityChecklist = {
+export type QualityChecklist = {
   cueHidingQuality: QualityRating;
   cameraSetupQuality: QualityRating;
   reactionClarity: QualityRating;
 };
 
 export type ChallengeSession = {
-  remoteId: number | null;
-  challenge: Challenge;
+  challenge: ChallengeSetupData;
   shooterUpload: ShooterUploadData | null;
   goalkeeperResponse: GoalkeeperResponseData | null;
   status: SessionStatus;
   analystNotes: string;
-  qualityChecklist: SessionQualityChecklist;
+  qualityChecklist: QualityChecklist;
+  remoteId?: number;
+  reportCount?: number;
+  lastReportExportedAt?: string | null;
+};
+
+export const defaultQualityChecklist: QualityChecklist = {
+  cueHidingQuality: 'Okay',
+  cameraSetupQuality: 'Okay',
+  reactionClarity: 'Okay',
 };

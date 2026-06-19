@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,477 +9,556 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
-import { VideoView, useVideoPlayer } from 'expo-video';
-import { saveSessionToSupabase } from '../services/sessionService';
-import { createSignedVideoUrl } from '../services/storageService';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  deleteSessionFromSupabase,
+  fetchPagedSessionsFromSupabase,
+} from '../services/sessionService';
 import { analyzeSession } from '../services/analysisService';
-import { exportSessionReportPdf, shareSessionReportPdf } from '../services/reportService';
 import { useChallenge } from '../context/ChallengeContext';
-import ProgressSteps from '../components/ProgressSteps';
-import type { QualityRating } from '../types/session';
+import type { ChallengeSession, SessionStatus } from '../types/session';
+import SessionMediaThumbnail from '../components/SessionMediaThumbnail';
 
 type Props = {
   navigation: any;
 };
 
-const ratingOptions: QualityRating[] = ['Good', 'Okay', 'Poor'];
+type FilterOption = 'all' | SessionStatus;
+type SortOption = 'newest' | 'oldest';
+type VerdictFilter = 'all' | 'Strong Session' | 'Usable With Gaps' | 'Weak Session';
 
-export default function ResultsScreen({ navigation }: Props) {
-  const {
-    currentSession,
-    resetSession,
-    setAnalystNotes,
-    setQualityChecklist,
-    setRemoteId,
-    isSyncing,
-    syncError,
-    setIsSyncing,
-    setSyncError,
-  } = useChallenge();
+const PAGE_SIZE = 10;
 
-  const [shooterSignedUrl, setShooterSignedUrl] = useState<string | null>(null);
-  const [goalkeeperSignedUrl, setGoalkeeperSignedUrl] = useState<string | null>(null);
-  const [isLoadingMedia, setIsLoadingMedia] = useState(false);
-  const [reportCount, setReportCount] = useState<number>((currentSession as any)?.reportCount ?? 0);
-  const [lastReportExportedAt, setLastReportExportedAt] = useState<string | null>(
-    (currentSession as any)?.lastReportExportedAt ?? null
-  );
+const filterOptions: { label: string; value: FilterOption }[] = [
+  { label: 'All', value: 'all' },
+  { label: 'Created', value: 'created' },
+  { label: 'Shooter', value: 'shooter_submitted' },
+  { label: 'Goalkeeper', value: 'goalkeeper_submitted' },
+  { label: 'Complete', value: 'complete' },
+];
 
-  if (!currentSession) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Results</Text>
-          <Text style={styles.subtitle}>No session found. Please create a challenge first.</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+const verdictOptions: { label: string; value: VerdictFilter }[] = [
+  { label: 'All', value: 'all' },
+  { label: 'Strong', value: 'Strong Session' },
+  { label: 'Usable', value: 'Usable With Gaps' },
+  { label: 'Weak', value: 'Weak Session' },
+];
 
-  const {
-    remoteId,
-    challenge,
-    shooterUpload,
-    goalkeeperResponse,
-    status,
-    analystNotes,
-    qualityChecklist,
-  } = currentSession;
+export default function MySessionsScreen({ navigation }: Props) {
+  const { currentSession, loadSessionObject, setSessionHistory, resetSession } = useChallenge();
+  const [sessions, setSessions] = useState<ChallengeSession[]>([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [deletingRemoteId, setDeletingRemoteId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState<FilterOption>('all');
+  const [selectedVerdict, setSelectedVerdict] = useState<VerdictFilter>('all');
+  const [selectedSort, setSelectedSort] = useState<SortOption>('newest');
+  const [searchText, setSearchText] = useState('');
 
-  const shooterPlayer = useVideoPlayer(shooterSignedUrl ?? null, (player) => {
-    player.loop = false;
-  });
-
-  const goalkeeperPlayer = useVideoPlayer(goalkeeperSignedUrl ?? null, (player) => {
-    player.loop = false;
-  });
-
-  useEffect(() => {
-    setReportCount((currentSession as any)?.reportCount ?? 0);
-    setLastReportExportedAt((currentSession as any)?.lastReportExportedAt ?? null);
-  }, [currentSession]);
-
-  useEffect(() => {
-    const loadSignedUrls = async () => {
-      try {
-        setIsLoadingMedia(true);
-
-        if (shooterUpload?.videoFilename) {
-          const url = await createSignedVideoUrl(shooterUpload.videoFilename);
-          setShooterSignedUrl(url);
-        } else {
-          setShooterSignedUrl(null);
-        }
-
-        if (goalkeeperResponse?.videoFilename) {
-          const url = await createSignedVideoUrl(goalkeeperResponse.videoFilename);
-          setGoalkeeperSignedUrl(url);
-        } else {
-          setGoalkeeperSignedUrl(null);
-        }
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Unexpected error while loading media.';
-        Alert.alert('Media load failed', message);
-      } finally {
-        setIsLoadingMedia(false);
+  const loadFirstPage = async (refresh = false) => {
+    try {
+      if (refresh) {
+        setIsRefreshing(true);
+      } else {
+        setIsLoading(true);
       }
-    };
 
-    loadSignedUrls();
-  }, [shooterUpload?.videoFilename, goalkeeperResponse?.videoFilename]);
+      setError(null);
 
-  const isShooterComplete = !!shooterUpload;
-  const isGoalkeeperComplete = !!goalkeeperResponse;
-  const isRecordComplete = status === 'complete';
-
-  const completenessScore =
-    (challenge ? 20 : 0) +
-    (shooterUpload ? 20 : 0) +
-    (goalkeeperResponse ? 20 : 0) +
-    (analystNotes.trim() ? 10 : 0) +
-    (qualityChecklist ? 10 : 0) +
-    (shooterUpload?.videoFilename?.trim() ? 10 : 0) +
-    (goalkeeperResponse?.videoFilename?.trim() ? 10 : 0);
-
-  const analysis = useMemo(() => analyzeSession(currentSession), [currentSession]);
-
-  const enrichedSession = {
-    ...currentSession,
-    analystNotes,
-    qualityChecklist,
-    reportCount,
-    lastReportExportedAt,
-  } as any;
-
-  const exportPayload = {
-    remoteId,
-    challenge,
-    status,
-    completenessScore,
-    analysis,
-    reportCount,
-    lastReportExportedAt,
-    analystNotes: analystNotes || '',
-    qualityChecklist,
-    shooterUpload,
-    goalkeeperResponse,
-  };
-
-  const exportJson = JSON.stringify(exportPayload, null, 2);
-
-  const handleCopyJson = async () => {
-    try {
-      await Clipboard.setStringAsync(exportJson);
-      Alert.alert('Copied', 'Session JSON copied to clipboard.');
-    } catch {
-      Alert.alert('Copy failed', 'Unable to copy JSON right now.');
-    }
-  };
-
-  const handleExportPdf = async () => {
-    try {
-      const pdfUri = await exportSessionReportPdf({
-        session: enrichedSession,
-        analysis,
-        completenessScore,
-      });
-
-      await shareSessionReportPdf(pdfUri);
-
-      const exportedAt = new Date().toISOString();
-      setReportCount((prev) => prev + 1);
-      setLastReportExportedAt(exportedAt);
-
-      Alert.alert('Exported', 'Session report exported successfully.');
-    } catch (error) {
+      const result = await fetchPagedSessionsFromSupabase(0, PAGE_SIZE);
+      setSessions(result.sessions);
+      setSessionHistory(result.sessions);
+      setPage(0);
+      setHasMore(result.hasMore);
+    } catch (err) {
       const message =
-        error instanceof Error ? error.message : 'Unexpected error while exporting report.';
-      Alert.alert('Export failed', message);
-    }
-  };
-
-  const handleSaveToSupabase = async () => {
-    try {
-      setIsSyncing(true);
-      setSyncError(null);
-
-      const result = await saveSessionToSupabase(
-        {
-          ...currentSession,
-          analystNotes,
-          qualityChecklist,
-          reportCount,
-          lastReportExportedAt,
-        } as any,
-        completenessScore
-      );
-
-      if (!remoteId && result.remoteId) {
-        setRemoteId(result.remoteId);
-      }
-
-      if (result.mode === 'inserted') {
-        Alert.alert('Saved', 'New session with report history saved to Supabase.');
-        return;
-      }
-
-      Alert.alert('Updated', 'Existing session with report history updated in Supabase.');
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Unexpected error while saving session.';
-      setSyncError(message);
-      Alert.alert('Save failed', message);
+        err instanceof Error ? err.message : 'Unexpected error while loading sessions.';
+      setError(message);
     } finally {
-      setIsSyncing(false);
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
-  const handleResetSession = () => {
+  const loadMore = async () => {
+    if (!hasMore || isLoadingMore) return;
+
+    try {
+      setIsLoadingMore(true);
+      const nextPage = page + 1;
+      const result = await fetchPagedSessionsFromSupabase(nextPage, PAGE_SIZE);
+
+      const updated = [...sessions, ...result.sessions];
+      setSessions(updated);
+      setSessionHistory(updated);
+      setPage(nextPage);
+      setHasMore(result.hasMore);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Unexpected error while loading more sessions.';
+      Alert.alert('Load more failed', message);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    loadFirstPage(false);
+  }, []);
+
+  const getAnalysisBadgeStyle = (verdict: string) => {
+    if (verdict === 'Strong Session') return styles.analysisBadgeStrong;
+    if (verdict === 'Usable With Gaps') return styles.analysisBadgeMedium;
+    return styles.analysisBadgeWeak;
+  };
+
+  const visibleSessions = useMemo(() => {
+    let result = [...sessions];
+    const query = searchText.trim().toLowerCase();
+
+    if (selectedFilter !== 'all') {
+      result = result.filter((session) => session.status === selectedFilter);
+    }
+
+    if (selectedVerdict !== 'all') {
+      result = result.filter((session) => analyzeSession(session).verdict === selectedVerdict);
+    }
+
+    if (query) {
+      result = result.filter((session) => {
+        const challengeName = session.challenge.challengeName.toLowerCase();
+        const opponent = session.challenge.opponent.toLowerCase();
+        return challengeName.includes(query) || opponent.includes(query);
+      });
+    }
+
+    result.sort((a, b) => {
+      const timeA = new Date(a.challenge.createdAt).getTime();
+      const timeB = new Date(b.challenge.createdAt).getTime();
+      return selectedSort === 'newest' ? timeB - timeA : timeA - timeB;
+    });
+
+    return result;
+  }, [sessions, selectedFilter, selectedVerdict, selectedSort, searchText]);
+
+  const handleOpenSession = (session: ChallengeSession) => {
+    loadSessionObject(session);
+    navigation.navigate('Results');
+  };
+
+  const handleEditSession = (session: ChallengeSession) => {
+    loadSessionObject(session);
+
+    if (session.status === 'created') {
+      navigation.navigate('ShooterUpload');
+      return;
+    }
+
+    if (session.status === 'shooter_submitted') {
+      navigation.navigate('GoalkeeperResponse');
+      return;
+    }
+
+    navigation.navigate('Results');
+  };
+
+  const handleWatchShooterVideo = (session: ChallengeSession) => {
+    if (!session.shooterUpload?.videoFilename) {
+      Alert.alert('No shooter video', 'This session does not have a shooter video yet.');
+      return;
+    }
+
+    loadSessionObject(session);
+    navigation.navigate('Results');
+  };
+
+  const handleWatchGoalkeeperVideo = (session: ChallengeSession) => {
+    if (!session.goalkeeperResponse?.videoFilename) {
+      Alert.alert('No goalkeeper video', 'This session does not have a goalkeeper video yet.');
+      return;
+    }
+
+    loadSessionObject(session);
+    navigation.navigate('Results');
+  };
+
+  const handleRefresh = async () => {
+    await loadFirstPage(true);
+  };
+
+  const handleDeleteSession = (session: ChallengeSession) => {
+    if (!session.remoteId) {
+      Alert.alert('Delete failed', 'This session has no remote id.');
+      return;
+    }
+
     Alert.alert(
-      'Reset current session',
-      'Are you sure you want to clear this session and all related data?',
+      'Delete session',
+      `Are you sure you want to delete "${session.challenge.challengeName}"?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Reset',
+          text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            resetSession();
-            navigation.navigate('Home');
+          onPress: async () => {
+            try {
+              setDeletingRemoteId(session.remoteId);
+
+              await deleteSessionFromSupabase(session.remoteId);
+
+              const updatedSessions = sessions.filter(
+                (item) => item.remoteId !== session.remoteId
+              );
+
+              setSessions(updatedSessions);
+              setSessionHistory(updatedSessions);
+
+              if (currentSession?.remoteId === session.remoteId) {
+                resetSession();
+              }
+
+              Alert.alert('Deleted', 'Session deleted from Supabase.');
+            } catch (err) {
+              const message =
+                err instanceof Error ? err.message : 'Unexpected error while deleting session.';
+              Alert.alert('Delete failed', message);
+            } finally {
+              setDeletingRemoteId(null);
+            }
           },
         },
       ]
     );
   };
 
-  const handleStartNewChallenge = () => {
-    navigation.navigate('CreateChallenge');
-  };
-
-  const handleGoHome = () => {
-    navigation.navigate('Home');
-  };
-
-  const updateChecklistField = (
-    field: 'cueHidingQuality' | 'cameraSetupQuality' | 'reactionClarity',
-    value: QualityRating
-  ) => {
-    setQualityChecklist({
-      ...qualityChecklist,
-      [field]: value,
-    });
+  const getStatusLabel = (status: SessionStatus) => {
+    switch (status) {
+      case 'created':
+        return 'Created';
+      case 'shooter_submitted':
+        return 'Shooter Done';
+      case 'goalkeeper_submitted':
+        return 'Goalkeeper Done';
+      case 'complete':
+        return 'Complete';
+      default:
+        return status;
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
+      >
         <View style={styles.content}>
-          <ProgressSteps currentStep={4} />
+          <Text style={styles.title}>My Sessions</Text>
+          <Text style={styles.subtitle}>Sessions loaded from your Supabase account.</Text>
 
-          <Text style={styles.title}>Results</Text>
-          <Text style={styles.subtitle}>Example version 1 output for the challenge.</Text>
-
-          {syncError && (
-            <View style={styles.errorCard}>
-              <Text style={styles.errorTitle}>Backend Error</Text>
-              <Text style={styles.errorText}>{syncError}</Text>
-            </View>
-          )}
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Session Completeness Score</Text>
-            <Text style={styles.scoreValue}>{completenessScore}/100</Text>
-            <Text style={styles.scoreNote}>
-              Based on challenge data, shooter data, goalkeeper data, notes, checklist, and media.
-            </Text>
-            <Text style={styles.remoteIdText}>Remote ID: {remoteId ?? 'Not saved yet'}</Text>
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Report Export History</Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Report Count:</Text> {reportCount}
-            </Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Last Exported:</Text>{' '}
-              {lastReportExportedAt ? new Date(lastReportExportedAt).toLocaleString() : 'Never'}
-            </Text>
-          </View>
-
-          <View style={styles.analysisCard}>
-            <Text style={styles.cardTitle}>Automatic Session Analysis</Text>
-            <Text style={styles.analysisScore}>{analysis.readinessScore}/100</Text>
-            <Text style={styles.analysisVerdict}>{analysis.verdict}</Text>
-
-            <Text style={styles.analysisSectionTitle}>Flags</Text>
-            {analysis.flags.length > 0 ? (
-              analysis.flags.map((flag, index) => (
-                <Text key={index} style={styles.analysisItem}>
-                  • {flag}
-                </Text>
-              ))
-            ) : (
-              <Text style={styles.analysisItem}>• No major flags detected.</Text>
-            )}
-
-            <Text style={styles.analysisSectionTitle}>Recommendations</Text>
-            {analysis.recommendations.length > 0 ? (
-              analysis.recommendations.map((item, index) => (
-                <Text key={index} style={styles.analysisItem}>
-                  • {item}
-                </Text>
-              ))
-            ) : (
-              <Text style={styles.analysisItem}>• No recommendations right now.</Text>
-            )}
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Completion Status</Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Session Status:</Text> {status}
-            </Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Challenge Created:</Text> Yes
-            </Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Shooter Submitted:</Text>{' '}
-              {isShooterComplete ? 'Yes' : 'No'}
-            </Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Goalkeeper Submitted:</Text>{' '}
-              {isGoalkeeperComplete ? 'Yes' : 'No'}
-            </Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Record Complete:</Text>{' '}
-              {isRecordComplete ? 'Yes' : 'No'}
-            </Text>
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Quality Checklist</Text>
-
-            <Text style={styles.checklistLabel}>Cue Hiding Quality</Text>
-            <View style={styles.optionRow}>
-              {ratingOptions.map((option) => {
-                const isSelected = qualityChecklist.cueHidingQuality === option;
-                return (
-                  <TouchableOpacity
-                    key={`cue-${option}`}
-                    style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
-                    onPress={() => updateChecklistField('cueHidingQuality', option)}
-                  >
-                    <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
-                      {option}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <Text style={styles.checklistLabel}>Camera Setup Quality</Text>
-            <View style={styles.optionRow}>
-              {ratingOptions.map((option) => {
-                const isSelected = qualityChecklist.cameraSetupQuality === option;
-                return (
-                  <TouchableOpacity
-                    key={`camera-${option}`}
-                    style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
-                    onPress={() => updateChecklistField('cameraSetupQuality', option)}
-                  >
-                    <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
-                      {option}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <Text style={styles.checklistLabel}>Reaction Clarity</Text>
-            <View style={styles.optionRow}>
-              {ratingOptions.map((option) => {
-                const isSelected = qualityChecklist.reactionClarity === option;
-                return (
-                  <TouchableOpacity
-                    key={`reaction-${option}`}
-                    style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
-                    onPress={() => updateChecklistField('reactionClarity', option)}
-                  >
-                    <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
-                      {option}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Analyst Notes</Text>
+          <View style={styles.controlCard}>
+            <Text style={styles.controlTitle}>Search</Text>
             <TextInput
-              style={styles.notesInput}
-              placeholder="Add a short analyst/reviewer note for this session"
-              value={analystNotes}
-              onChangeText={setAnalystNotes}
-              multiline
+              style={styles.searchInput}
+              placeholder="Search by challenge name or opponent"
+              value={searchText}
+              onChangeText={setSearchText}
             />
-          </View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Session Media</Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Media loading:</Text> {isLoadingMedia ? 'Yes' : 'No'}
-            </Text>
+            <Text style={styles.controlTitle}>Filter by Status</Text>
+            <View style={styles.filterRow}>
+              {filterOptions.map((option) => {
+                const isSelected = selectedFilter === option.value;
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[styles.filterButton, isSelected && styles.filterButtonSelected]}
+                    onPress={() => setSelectedFilter(option.value)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterButtonText,
+                        isSelected && styles.filterButtonTextSelected,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-            <Text style={styles.mediaTitle}>Shooter Video</Text>
-            {shooterSignedUrl ? (
-              <VideoView
-                player={shooterPlayer}
-                style={styles.video}
-                allowsFullscreen
-                allowsPictureInPicture
-                nativeControls
-              />
-            ) : (
-              <Text style={styles.mediaEmpty}>No shooter video available.</Text>
-            )}
+            <Text style={styles.controlTitle}>Filter by Analysis</Text>
+            <View style={styles.filterRow}>
+              {verdictOptions.map((option) => {
+                const isSelected = selectedVerdict === option.value;
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[styles.filterButton, isSelected && styles.filterButtonSelected]}
+                    onPress={() => setSelectedVerdict(option.value)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterButtonText,
+                        isSelected && styles.filterButtonTextSelected,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
-            <Text style={styles.mediaTitle}>Goalkeeper Video</Text>
-            {goalkeeperSignedUrl ? (
-              <VideoView
-                player={goalkeeperPlayer}
-                style={styles.video}
-                allowsFullscreen
-                allowsPictureInPicture
-                nativeControls
-              />
-            ) : (
-              <Text style={styles.mediaEmpty}>No goalkeeper video available.</Text>
-            )}
-          </View>
+            <Text style={styles.controlTitle}>Sort by Date</Text>
+            <View style={styles.sortRow}>
+              <TouchableOpacity
+                style={[
+                  styles.sortButton,
+                  selectedSort === 'newest' && styles.sortButtonSelected,
+                ]}
+                onPress={() => setSelectedSort('newest')}
+              >
+                <Text
+                  style={[
+                    styles.sortButtonText,
+                    selectedSort === 'newest' && styles.sortButtonTextSelected,
+                  ]}
+                >
+                  Newest First
+                </Text>
+              </TouchableOpacity>
 
-          <View style={styles.card}>
-            <View style={styles.jsonHeader}>
-              <Text style={styles.cardTitle}>Session JSON Preview</Text>
-              <TouchableOpacity style={styles.copyButton} onPress={handleCopyJson}>
-                <Text style={styles.copyButtonText}>Copy JSON</Text>
+              <TouchableOpacity
+                style={[
+                  styles.sortButton,
+                  selectedSort === 'oldest' && styles.sortButtonSelected,
+                ]}
+                onPress={() => setSelectedSort('oldest')}
+              >
+                <Text
+                  style={[
+                    styles.sortButtonText,
+                    selectedSort === 'oldest' && styles.sortButtonTextSelected,
+                  ]}
+                >
+                  Oldest First
+                </Text>
               </TouchableOpacity>
             </View>
 
-            <ScrollView horizontal showsHorizontalScrollIndicator>
-              <Text style={styles.jsonText}>{exportJson}</Text>
-            </ScrollView>
-          </View>
-
-          <TouchableOpacity style={styles.exportButton} onPress={handleExportPdf}>
-            <Text style={styles.exportButtonText}>Export PDF Report</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.saveButton, isSyncing && styles.saveButtonDisabled]}
-            onPress={handleSaveToSupabase}
-            disabled={isSyncing}
-          >
-            <Text style={styles.saveButtonText}>
-              {isSyncing ? 'Syncing...' : remoteId ? 'Update in Supabase' : 'Save to Supabase'}
+            <Text style={styles.resultCount}>
+              Showing {visibleSessions.length} loaded session(s)
             </Text>
-          </TouchableOpacity>
-
-          <View style={styles.actionBar}>
-            <TouchableOpacity style={styles.actionButtonSecondary} onPress={handleGoHome}>
-              <Text style={styles.actionButtonSecondaryText}>Go Home</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButtonPrimary} onPress={handleStartNewChallenge}>
-              <Text style={styles.actionButtonPrimaryText}>Start New Challenge</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionButtonDanger} onPress={handleResetSession}>
-              <Text style={styles.actionButtonDangerText}>Reset Session</Text>
-            </TouchableOpacity>
           </View>
+
+          {error && (
+            <View style={styles.errorCard}>
+              <Text style={styles.errorTitle}>Load Error</Text>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+
+          {isLoading ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>Loading sessions...</Text>
+            </View>
+          ) : visibleSessions.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>
+                No sessions match the current search or filter.
+              </Text>
+            </View>
+          ) : (
+            <>
+              {visibleSessions.map((session) => {
+                const isDeleting = deletingRemoteId === session.remoteId;
+                const editLabel =
+                  session.status === 'created'
+                    ? 'Continue Shooter Step'
+                    : session.status === 'shooter_submitted'
+                    ? 'Continue Goalkeeper Step'
+                    : 'Open Final Results';
+
+                const hasShooterVideo = !!session.shooterUpload?.videoFilename;
+                const hasGoalkeeperVideo = !!session.goalkeeperResponse?.videoFilename;
+                const analysis = analyzeSession(session);
+                const reportCount = session.reportCount ?? 0;
+                const lastReportExportedAt = session.lastReportExportedAt ?? null;
+
+                return (
+                  <View
+                    key={`${session.remoteId ?? session.challenge.id}`}
+                    style={styles.sessionCard}
+                  >
+                    <View style={styles.sessionHeader}>
+                      <Text style={styles.sessionTitle}>{session.challenge.challengeName}</Text>
+                      <View style={styles.statusBadge}>
+                        <Text style={styles.statusBadgeText}>
+                          {getStatusLabel(session.status)}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.sessionText}>Opponent: {session.challenge.opponent}</Text>
+                    <Text style={styles.sessionText}>
+                      Remote ID: {session.remoteId ?? 'Not synced'}
+                    </Text>
+                    <Text style={styles.sessionText}>
+                      Created: {new Date(session.challenge.createdAt).toLocaleString()}
+                    </Text>
+                    <Text style={styles.sessionText}>Report Count: {reportCount}</Text>
+                    <Text style={styles.sessionText}>
+                      Last Exported:{' '}
+                      {lastReportExportedAt
+                        ? new Date(lastReportExportedAt).toLocaleString()
+                        : 'Never'}
+                    </Text>
+
+                    <View style={styles.thumbnailRow}>
+                      <View style={styles.thumbnailColumn}>
+                        <Text style={styles.thumbnailLabel}>Shooter Preview</Text>
+                        <SessionMediaThumbnail
+                          path={session.shooterUpload?.videoFilename}
+                          emptyLabel="No shooter preview"
+                        />
+                      </View>
+
+                      <View style={styles.thumbnailColumn}>
+                        <Text style={styles.thumbnailLabel}>Goalkeeper Preview</Text>
+                        <SessionMediaThumbnail
+                          path={session.goalkeeperResponse?.videoFilename}
+                          emptyLabel="No goalkeeper preview"
+                        />
+                      </View>
+                    </View>
+
+                    <View style={styles.analysisRow}>
+                      <Text style={styles.analysisScore}>{analysis.readinessScore}/100</Text>
+                      <View
+                        style={[
+                          styles.analysisBadge,
+                          getAnalysisBadgeStyle(analysis.verdict),
+                        ]}
+                      >
+                        <Text style={styles.analysisBadgeText}>{analysis.verdict}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.mediaBadgeRow}>
+                      <View
+                        style={[
+                          styles.mediaBadge,
+                          hasShooterVideo ? styles.mediaBadgeReady : styles.mediaBadgeMissing,
+                        ]}
+                      >
+                        <Text style={styles.mediaBadgeText}>
+                          Shooter {hasShooterVideo ? 'Attached' : 'Missing'}
+                        </Text>
+                      </View>
+
+                      <View
+                        style={[
+                          styles.mediaBadge,
+                          hasGoalkeeperVideo ? styles.mediaBadgeReady : styles.mediaBadgeMissing,
+                        ]}
+                      >
+                        <Text style={styles.mediaBadgeText}>
+                          Goalkeeper {hasGoalkeeperVideo ? 'Attached' : 'Missing'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.mediaActionRow}>
+                      <TouchableOpacity
+                        style={[
+                          styles.mediaActionButton,
+                          !hasShooterVideo && styles.mediaActionButtonDisabled,
+                        ]}
+                        onPress={() => handleWatchShooterVideo(session)}
+                        disabled={!hasShooterVideo}
+                      >
+                        <Text
+                          style={[
+                            styles.mediaActionButtonText,
+                            !hasShooterVideo && styles.mediaActionButtonTextDisabled,
+                          ]}
+                        >
+                          Watch Shooter Video
+                        </Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.mediaActionButton,
+                          !hasGoalkeeperVideo && styles.mediaActionButtonDisabled,
+                        ]}
+                        onPress={() => handleWatchGoalkeeperVideo(session)}
+                        disabled={!hasGoalkeeperVideo}
+                      >
+                        <Text
+                          style={[
+                            styles.mediaActionButtonText,
+                            !hasGoalkeeperVideo && styles.mediaActionButtonTextDisabled,
+                          ]}
+                        >
+                          Watch Goalkeeper Video
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.openButton}
+                      onPress={() => handleOpenSession(session)}
+                    >
+                      <Text style={styles.openButtonText}>Open in Results</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={() => handleEditSession(session)}
+                    >
+                      <Text style={styles.editButtonText}>{editLabel}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.deleteButton, isDeleting && styles.buttonDisabled]}
+                      onPress={() => handleDeleteSession(session)}
+                      disabled={isDeleting}
+                    >
+                      <Text style={styles.deleteButtonText}>
+                        {isDeleting ? 'Deleting...' : 'Delete Session'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+
+              {hasMore &&
+                !searchText.trim() &&
+                selectedFilter === 'all' &&
+                selectedVerdict === 'all' && (
+                  <TouchableOpacity
+                    style={[styles.loadMoreButton, isLoadingMore && styles.buttonDisabled]}
+                    onPress={loadMore}
+                    disabled={isLoadingMore}
+                  >
+                    <Text style={styles.loadMoreButtonText}>
+                      {isLoadingMore ? 'Loading more...' : 'Load More'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+            </>
+          )}
+
+          <TouchableOpacity style={styles.homeButton} onPress={() => navigation.navigate('Home')}>
+            <Text style={styles.homeButtonText}>Back to Home</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -490,48 +569,79 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F4F7FB' },
   scrollContent: { paddingBottom: 32 },
   content: { flex: 1, padding: 24 },
-  title: { fontSize: 30, fontWeight: '800', color: '#111827', marginBottom: 8 },
+  title: { fontSize: 32, fontWeight: '800', color: '#111827', marginBottom: 8 },
   subtitle: { fontSize: 15, lineHeight: 22, color: '#4B5563', marginBottom: 24 },
-  card: {
+  controlCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 20,
-    marginBottom: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-  },
-  analysisCard: {
-    backgroundColor: '#EFF6FF',
-    borderRadius: 18,
-    padding: 20,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
   },
-  analysisScore: {
-    fontSize: 34,
-    fontWeight: '800',
-    color: '#1D4ED8',
-    marginBottom: 4,
-  },
-  analysisVerdict: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1E3A8A',
-    marginBottom: 14,
-  },
-  analysisSectionTitle: {
-    fontSize: 14,
+  controlTitle: {
+    fontSize: 15,
     fontWeight: '700',
     color: '#111827',
-    marginTop: 8,
-    marginBottom: 6,
+    marginBottom: 10,
   },
-  analysisItem: {
+  searchInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    marginBottom: 18,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 18,
+  },
+  filterButton: {
+    backgroundColor: '#E5E7EB',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  filterButtonSelected: {
+    backgroundColor: '#111827',
+  },
+  filterButtonText: {
+    color: '#111827',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  filterButtonTextSelected: {
+    color: '#FFFFFF',
+  },
+  sortRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+  sortButton: {
+    flex: 1,
+    backgroundColor: '#E5E7EB',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  sortButtonSelected: {
+    backgroundColor: '#DBEAFE',
+  },
+  sortButtonText: {
+    color: '#111827',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  sortButtonTextSelected: {
+    color: '#1D4ED8',
+  },
+  resultCount: {
     fontSize: 14,
-    lineHeight: 20,
-    color: '#374151',
-    marginBottom: 4,
+    color: '#6B7280',
   },
   errorCard: {
     backgroundColor: '#FEF2F2',
@@ -552,170 +662,206 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: '#B91C1C',
   },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 },
-  row: { fontSize: 16, color: '#374151', marginBottom: 12 },
-  label: { fontWeight: '700', color: '#111827' },
-  notesInput: {
-    minHeight: 100,
+  emptyCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 18,
+    padding: 20,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    textAlignVertical: 'top',
+    borderColor: '#E5E7EB',
+    marginBottom: 20,
   },
-  checklistLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#374151',
-    marginBottom: 8,
-    marginTop: 8,
-  },
-  optionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 10,
-  },
-  optionButton: {
-    backgroundColor: '#E5E7EB',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-  },
-  optionButtonSelected: {
-    backgroundColor: '#111827',
-  },
-  optionText: {
-    color: '#111827',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  optionTextSelected: {
-    color: '#FFFFFF',
-  },
-  scoreValue: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  scoreNote: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#4B5563',
-    marginBottom: 8,
-  },
-  remoteIdText: {
-    fontSize: 14,
-    color: '#2563EB',
-    fontWeight: '600',
-  },
-  mediaTitle: {
+  emptyText: {
     fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-    marginTop: 10,
-    marginBottom: 8,
-  },
-  mediaEmpty: {
-    fontSize: 14,
     color: '#6B7280',
-    marginBottom: 8,
   },
-  video: {
-    width: '100%',
-    height: 220,
-    borderRadius: 14,
-    backgroundColor: '#000000',
-    marginBottom: 12,
+  sessionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 16,
   },
-  jsonHeader: {
+  sessionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: 8,
+    gap: 10,
   },
-  jsonText: {
+  sessionTitle: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  statusBadge: {
+    backgroundColor: '#E5E7EB',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+  },
+  statusBadgeText: {
+    color: '#111827',
     fontSize: 12,
-    color: '#1F2937',
-    fontFamily: 'Courier',
-    lineHeight: 18,
-  },
-  copyButton: {
-    backgroundColor: '#111827',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-  },
-  copyButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
     fontWeight: '700',
   },
-  exportButton: {
+  sessionText: {
+    fontSize: 14,
+    color: '#4B5563',
+    marginBottom: 4,
+  },
+  thumbnailRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  thumbnailColumn: {
+    flex: 1,
+  },
+  thumbnailLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 6,
+  },
+  analysisRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 12,
+  },
+  analysisScore: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1D4ED8',
+  },
+  analysisBadge: {
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+  },
+  analysisBadgeStrong: {
+    backgroundColor: '#DCFCE7',
+  },
+  analysisBadgeMedium: {
+    backgroundColor: '#FEF3C7',
+  },
+  analysisBadgeWeak: {
+    backgroundColor: '#FEE2E2',
+  },
+  analysisBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  mediaBadgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  mediaBadge: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+  },
+  mediaBadgeReady: {
+    backgroundColor: '#DCFCE7',
+  },
+  mediaBadgeMissing: {
+    backgroundColor: '#FEE2E2',
+  },
+  mediaBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  mediaActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  mediaActionButton: {
+    flex: 1,
+    backgroundColor: '#DBEAFE',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  mediaActionButtonDisabled: {
+    backgroundColor: '#E5E7EB',
+  },
+  mediaActionButtonText: {
+    color: '#1D4ED8',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  mediaActionButtonTextDisabled: {
+    color: '#9CA3AF',
+  },
+  openButton: {
+    backgroundColor: '#E5E7EB',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  openButtonText: {
+    color: '#111827',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  editButton: {
+    backgroundColor: '#DBEAFE',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  editButtonText: {
+    color: '#1D4ED8',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  deleteButton: {
+    backgroundColor: '#FEE2E2',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  deleteButtonText: {
+    color: '#B91C1C',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  loadMoreButton: {
     backgroundColor: '#DBEAFE',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
-    marginBottom: 14,
+    marginTop: 4,
+    marginBottom: 16,
   },
-  exportButtonText: {
+  loadMoreButtonText: {
     color: '#1D4ED8',
     fontSize: 16,
     fontWeight: '700',
   },
-  saveButton: {
-    backgroundColor: '#DCFCE7',
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#86EFAC',
-  },
-  saveButtonDisabled: {
+  buttonDisabled: {
     opacity: 0.6,
   },
-  saveButtonText: {
-    color: '#166534',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  actionBar: {
-    marginTop: 8,
-    gap: 12,
-  },
-  actionButtonPrimary: {
-    backgroundColor: '#111827',
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  actionButtonPrimaryText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  actionButtonSecondary: {
+  homeButton: {
     backgroundColor: '#E5E7EB',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
+    marginTop: 8,
   },
-  actionButtonSecondaryText: {
+  homeButtonText: {
     color: '#111827',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  actionButtonDanger: {
-    backgroundColor: '#FEE2E2',
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-  },
-  actionButtonDangerText: {
-    color: '#B91C1C',
     fontSize: 16,
     fontWeight: '700',
   },

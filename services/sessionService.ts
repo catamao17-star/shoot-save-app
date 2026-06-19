@@ -19,6 +19,8 @@ function mapRowsToSessions(rows: SessionRow[]): ChallengeSession[] {
       return {
         ...payload,
         remoteId: payload.remoteId ?? row.id,
+        reportCount: payload.reportCount ?? 0,
+        lastReportExportedAt: payload.lastReportExportedAt ?? null,
       };
     })
     .filter(Boolean);
@@ -128,9 +130,11 @@ export async function saveSessionToSupabase(
     throw new Error('No authenticated user found.');
   }
 
-  const payload = {
+  const payload: ChallengeSession = {
     ...session,
     remoteId: session.remoteId,
+    reportCount: session.reportCount ?? 0,
+    lastReportExportedAt: session.lastReportExportedAt ?? null,
   };
 
   if (!session.remoteId) {

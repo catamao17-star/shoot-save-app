@@ -388,8 +388,8 @@ export default function MySessionsScreen({ navigation }: Props) {
                 const hasShooterVideo = !!session.shooterUpload?.videoFilename;
                 const hasGoalkeeperVideo = !!session.goalkeeperResponse?.videoFilename;
                 const analysis = analyzeSession(session);
-                const reportCount = (session as any).reportCount ?? 0;
-                const lastReportExportedAt = (session as any).lastReportExportedAt ?? null;
+                const reportCount = session.reportCount ?? 0;
+                const lastReportExportedAt = session.lastReportExportedAt ?? null;
 
                 return (
                   <View
