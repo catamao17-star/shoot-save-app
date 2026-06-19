@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useChallenge } from '../context/ChallengeContext';
 
@@ -8,7 +8,7 @@ type Props = {
 };
 
 export default function HomeScreen({ navigation }: Props) {
-  const { currentSession, resetSession } = useChallenge();
+  const { currentSession, sessionHistory, resetSession } = useChallenge();
 
   const handleResetChallenge = () => {
     Alert.alert(
@@ -51,92 +51,117 @@ export default function HomeScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
-      <View style={styles.content}>
-        <Text style={styles.title}>Shoot & Save</Text>
-        <Text style={styles.subtitle}>
-          Remote soccer challenge prototype for shooter vs goalkeeper
-        </Text>
-
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Version 1 Goal</Text>
-          <Text style={styles.cardText}>
-            Validate the workflow: shooter records a shot, goalkeeper responds later,
-            and the app stores the challenge flow for future data collection.
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Shoot & Save</Text>
+          <Text style={styles.subtitle}>
+            Remote soccer challenge prototype for shooter vs goalkeeper
           </Text>
-        </View>
 
-        {challenge && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Current Challenge</Text>
+            <Text style={styles.cardTitle}>Version 1 Goal</Text>
             <Text style={styles.cardText}>
-              <Text style={styles.label}>Challenge ID:</Text> {challenge.id}
-            </Text>
-            <Text style={styles.cardText}>
-              <Text style={styles.label}>Created At:</Text>{' '}
-              {new Date(challenge.createdAt).toLocaleString()}
-            </Text>
-            <Text style={styles.cardText}>
-              <Text style={styles.label}>Challenge:</Text> {challenge.challengeName}
-            </Text>
-            <Text style={styles.cardText}>
-              <Text style={styles.label}>Opponent:</Text> {challenge.opponent}
-            </Text>
-            <Text style={styles.cardText}>
-              <Text style={styles.label}>Cue-hiding method:</Text> {challenge.occlusionMethod}
-            </Text>
-            <Text style={styles.cardText}>
-              <Text style={styles.label}>Shooter data:</Text>{' '}
-              {shooterUpload ? 'Completed' : 'Not completed'}
-            </Text>
-            <Text style={styles.cardText}>
-              <Text style={styles.label}>Goalkeeper data:</Text>{' '}
-              {goalkeeperResponse ? 'Completed' : 'Not completed'}
-            </Text>
-            <Text style={styles.cardText}>
-              <Text style={styles.label}>Session status:</Text> {sessionStatus}
+              Validate the workflow: shooter records a shot, goalkeeper responds later,
+              and the app stores the challenge flow for future data collection.
             </Text>
           </View>
-        )}
 
-        {challenge && (
-          <TouchableOpacity style={styles.resumeButton} onPress={handleResumeSession}>
-            <Text style={styles.resumeButtonText}>Resume Current Session</Text>
+          {challenge && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Current Challenge</Text>
+              <Text style={styles.cardText}>
+                <Text style={styles.label}>Challenge ID:</Text> {challenge.id}
+              </Text>
+              <Text style={styles.cardText}>
+                <Text style={styles.label}>Created At:</Text>{' '}
+                {new Date(challenge.createdAt).toLocaleString()}
+              </Text>
+              <Text style={styles.cardText}>
+                <Text style={styles.label}>Challenge:</Text> {challenge.challengeName}
+              </Text>
+              <Text style={styles.cardText}>
+                <Text style={styles.label}>Opponent:</Text> {challenge.opponent}
+              </Text>
+              <Text style={styles.cardText}>
+                <Text style={styles.label}>Cue-hiding method:</Text> {challenge.occlusionMethod}
+              </Text>
+              <Text style={styles.cardText}>
+                <Text style={styles.label}>Shooter data:</Text>{' '}
+                {shooterUpload ? 'Completed' : 'Not completed'}
+              </Text>
+              <Text style={styles.cardText}>
+                <Text style={styles.label}>Goalkeeper data:</Text>{' '}
+                {goalkeeperResponse ? 'Completed' : 'Not completed'}
+              </Text>
+              <Text style={styles.cardText}>
+                <Text style={styles.label}>Session status:</Text> {sessionStatus}
+              </Text>
+            </View>
+          )}
+
+          {challenge && (
+            <TouchableOpacity style={styles.resumeButton} onPress={handleResumeSession}>
+              <Text style={styles.resumeButtonText}>Resume Current Session</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => navigation.navigate('CreateChallenge')}
+          >
+            <Text style={styles.primaryButtonText}>
+              {challenge ? 'Create New Challenge' : 'Create Challenge'}
+            </Text>
           </TouchableOpacity>
-        )}
 
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => navigation.navigate('CreateChallenge')}
-        >
-          <Text style={styles.primaryButtonText}>
-            {challenge ? 'Create New Challenge' : 'Create Challenge'}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={() => navigation.navigate('Results')}
-        >
-          <Text style={styles.secondaryButtonText}>View Current Results</Text>
-        </TouchableOpacity>
-
-        {challenge && (
-          <TouchableOpacity style={styles.resetButton} onPress={handleResetChallenge}>
-            <Text style={styles.resetButtonText}>Reset Challenge</Text>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => navigation.navigate('Results')}
+          >
+            <Text style={styles.secondaryButtonText}>View Current Results</Text>
           </TouchableOpacity>
-        )}
-      </View>
+
+          {challenge && (
+            <TouchableOpacity style={styles.resetButton} onPress={handleResetChallenge}>
+              <Text style={styles.resetButtonText}>Reset Challenge</Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.historyCard}>
+            <Text style={styles.historyTitle}>Recent Session History</Text>
+
+            {sessionHistory.length === 0 ? (
+              <Text style={styles.historyEmpty}>No completed sessions yet.</Text>
+            ) : (
+              sessionHistory.slice(0, 5).map((session) => (
+                <View key={session.challenge.id} style={styles.historyItem}>
+                  <Text style={styles.historyItemTitle}>{session.challenge.challengeName}</Text>
+                  <Text style={styles.historyItemText}>
+                    Opponent: {session.challenge.opponent}
+                  </Text>
+                  <Text style={styles.historyItemText}>
+                    Status: {session.status}
+                  </Text>
+                  <Text style={styles.historyItemText}>
+                    Created: {new Date(session.challenge.createdAt).toLocaleString()}
+                  </Text>
+                </View>
+              ))
+            )}
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F4F7FB' },
+  scrollContent: { paddingBottom: 32 },
   content: {
     flex: 1,
     paddingHorizontal: 24,
     paddingVertical: 32,
-    justifyContent: 'center',
   },
   title: { fontSize: 36, fontWeight: '800', color: '#111827', marginBottom: 12 },
   subtitle: { fontSize: 16, lineHeight: 24, color: '#4B5563', marginBottom: 28 },
@@ -187,6 +212,40 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
+    marginBottom: 20,
   },
   resetButtonText: { color: '#B91C1C', fontSize: 16, fontWeight: '700' },
+  historyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  historyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  historyEmpty: {
+    fontSize: 15,
+    color: '#6B7280',
+  },
+  historyItem: {
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  historyItemTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  historyItemText: {
+    fontSize: 14,
+    color: '#4B5563',
+    marginBottom: 2,
+  },
 });
