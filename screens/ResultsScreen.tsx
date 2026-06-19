@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import { useChallenge } from '../context/ChallengeContext';
 import ProgressSteps from '../components/ProgressSteps';
 import type { QualityRating } from '../types/session';
@@ -59,6 +60,15 @@ export default function ResultsScreen({ navigation }: Props) {
   };
 
   const exportJson = JSON.stringify(exportPayload, null, 2);
+
+  const handleCopyJson = async () => {
+    try {
+      await Clipboard.setStringAsync(exportJson);
+      Alert.alert('Copied', 'Session JSON copied to clipboard.');
+    } catch (error) {
+      Alert.alert('Copy failed', 'Unable to copy JSON right now.');
+    }
+  };
 
   const handleResetSession = () => {
     Alert.alert(
@@ -205,7 +215,13 @@ export default function ResultsScreen({ navigation }: Props) {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Session JSON Preview</Text>
+            <View style={styles.jsonHeader}>
+              <Text style={styles.cardTitle}>Session JSON Preview</Text>
+              <TouchableOpacity style={styles.copyButton} onPress={handleCopyJson}>
+                <Text style={styles.copyButtonText}>Copy JSON</Text>
+              </TouchableOpacity>
+            </View>
+
             <ScrollView horizontal showsHorizontalScrollIndicator>
               <Text style={styles.jsonText}>{exportJson}</Text>
             </ScrollView>
@@ -380,11 +396,28 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     color: '#4B5563',
   },
+  jsonHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   jsonText: {
     fontSize: 12,
     color: '#1F2937',
     fontFamily: 'Courier',
     lineHeight: 18,
+  },
+  copyButton: {
+    backgroundColor: '#111827',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+  },
+  copyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   actionBar: {
     marginTop: 8,
