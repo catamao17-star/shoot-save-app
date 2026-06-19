@@ -1,10 +1,14 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useChallenge } from '../context/ChallengeContext';
 import ProgressSteps from '../components/ProgressSteps';
 
-export default function ResultsScreen() {
-  const { currentSession } = useChallenge();
+type Props = {
+  navigation: any;
+};
+
+export default function ResultsScreen({ navigation }: Props) {
+  const { currentSession, resetSession } = useChallenge();
 
   if (!currentSession) {
     return (
@@ -22,6 +26,32 @@ export default function ResultsScreen() {
   const isShooterComplete = !!shooterUpload;
   const isGoalkeeperComplete = !!goalkeeperResponse;
   const isRecordComplete = status === 'complete';
+
+  const handleResetSession = () => {
+    Alert.alert(
+      'Reset current session',
+      'Are you sure you want to clear this session and all related data?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: () => {
+            resetSession();
+            navigation.navigate('Home');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleStartNewChallenge = () => {
+    navigation.navigate('CreateChallenge');
+  };
+
+  const handleGoHome = () => {
+    navigation.navigate('Home');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -168,6 +198,20 @@ export default function ResultsScreen() {
               <Text style={styles.label}>Outcome:</Text> Late save attempt
             </Text>
           </View>
+
+          <View style={styles.actionBar}>
+            <TouchableOpacity style={styles.actionButtonSecondary} onPress={handleGoHome}>
+              <Text style={styles.actionButtonSecondaryText}>Go Home</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButtonPrimary} onPress={handleStartNewChallenge}>
+              <Text style={styles.actionButtonPrimaryText}>Start New Challenge</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionButtonDanger} onPress={handleResetSession}>
+              <Text style={styles.actionButtonDangerText}>Reset Session</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -192,4 +236,41 @@ const styles = StyleSheet.create({
   row: { fontSize: 16, color: '#374151', marginBottom: 12 },
   label: { fontWeight: '700', color: '#111827' },
   codeLine: { fontSize: 13, color: '#1F2937', fontFamily: 'Courier', marginBottom: 4 },
+  actionBar: {
+    marginTop: 8,
+    gap: 12,
+  },
+  actionButtonPrimary: {
+    backgroundColor: '#111827',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  actionButtonPrimaryText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  actionButtonSecondary: {
+    backgroundColor: '#E5E7EB',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  actionButtonSecondaryText: {
+    color: '#111827',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  actionButtonDanger: {
+    backgroundColor: '#FEE2E2',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  actionButtonDangerText: {
+    color: '#B91C1C',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });
