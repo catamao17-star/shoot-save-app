@@ -27,6 +27,22 @@ export default function HomeScreen({ navigation }: Props) {
     );
   };
 
+  const handleResumeSession = () => {
+    if (!currentSession) return;
+
+    if (currentSession.status === 'created') {
+      navigation.navigate('ShooterUpload');
+      return;
+    }
+
+    if (currentSession.status === 'shooter_submitted') {
+      navigation.navigate('GoalkeeperResponse');
+      return;
+    }
+
+    navigation.navigate('Results');
+  };
+
   const challenge = currentSession?.challenge;
   const shooterUpload = currentSession?.shooterUpload;
   const goalkeeperResponse = currentSession?.goalkeeperResponse;
@@ -56,7 +72,8 @@ export default function HomeScreen({ navigation }: Props) {
               <Text style={styles.label}>Challenge ID:</Text> {challenge.id}
             </Text>
             <Text style={styles.cardText}>
-              <Text style={styles.label}>Created At:</Text> {new Date(challenge.createdAt).toLocaleString()}
+              <Text style={styles.label}>Created At:</Text>{' '}
+              {new Date(challenge.createdAt).toLocaleString()}
             </Text>
             <Text style={styles.cardText}>
               <Text style={styles.label}>Challenge:</Text> {challenge.challengeName}
@@ -68,15 +85,23 @@ export default function HomeScreen({ navigation }: Props) {
               <Text style={styles.label}>Cue-hiding method:</Text> {challenge.occlusionMethod}
             </Text>
             <Text style={styles.cardText}>
-              <Text style={styles.label}>Shooter data:</Text> {shooterUpload ? 'Completed' : 'Not completed'}
+              <Text style={styles.label}>Shooter data:</Text>{' '}
+              {shooterUpload ? 'Completed' : 'Not completed'}
             </Text>
             <Text style={styles.cardText}>
-              <Text style={styles.label}>Goalkeeper data:</Text> {goalkeeperResponse ? 'Completed' : 'Not completed'}
+              <Text style={styles.label}>Goalkeeper data:</Text>{' '}
+              {goalkeeperResponse ? 'Completed' : 'Not completed'}
             </Text>
             <Text style={styles.cardText}>
               <Text style={styles.label}>Session status:</Text> {sessionStatus}
             </Text>
           </View>
+        )}
+
+        {challenge && (
+          <TouchableOpacity style={styles.resumeButton} onPress={handleResumeSession}>
+            <Text style={styles.resumeButtonText}>Resume Current Session</Text>
+          </TouchableOpacity>
         )}
 
         <TouchableOpacity
@@ -129,6 +154,18 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 10 },
   cardText: { fontSize: 15, lineHeight: 22, color: '#4B5563', marginBottom: 4 },
   label: { fontWeight: '700', color: '#111827' },
+  resumeButton: {
+    backgroundColor: '#DBEAFE',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  resumeButtonText: {
+    color: '#1D4ED8',
+    fontSize: 16,
+    fontWeight: '700',
+  },
   primaryButton: {
     backgroundColor: '#111827',
     paddingVertical: 16,
