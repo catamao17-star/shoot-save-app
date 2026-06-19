@@ -48,6 +48,18 @@ export default function ResultsScreen({ navigation }: Props) {
     (shooterUpload?.videoFilename?.trim() ? 10 : 0) +
     (goalkeeperResponse?.videoFilename?.trim() ? 10 : 0);
 
+  const exportPayload = {
+    challenge,
+    status,
+    completenessScore,
+    analystNotes: analystNotes || '',
+    qualityChecklist,
+    shooterUpload,
+    goalkeeperResponse,
+  };
+
+  const exportJson = JSON.stringify(exportPayload, null, 2);
+
   const handleResetSession = () => {
     Alert.alert(
       'Reset current session',
@@ -193,48 +205,10 @@ export default function ResultsScreen({ navigation }: Props) {
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Export-Ready Record Summary</Text>
-            <Text style={styles.codeLine}>{'{'}</Text>
-            <Text style={styles.codeLine}>{'  '}challengeId: "{challenge.id}",</Text>
-            <Text style={styles.codeLine}>{'  '}createdAt: "{challenge.createdAt}",</Text>
-            <Text style={styles.codeLine}>{'  '}status: "{status}",</Text>
-            <Text style={styles.codeLine}>{'  '}completenessScore: {completenessScore},</Text>
-            <Text style={styles.codeLine}>{'  '}analystNotes: "{analystNotes || 'None'}",</Text>
-            <Text style={styles.codeLine}>
-              {'  '}qualityChecklist: {'{'} cueHidingQuality: "{qualityChecklist.cueHidingQuality}", cameraSetupQuality: "{qualityChecklist.cameraSetupQuality}", reactionClarity: "{qualityChecklist.reactionClarity}" {'}'},
-            </Text>
-            <Text style={styles.codeLine}>{'  '}challengeName: "{challenge.challengeName}",</Text>
-            <Text style={styles.codeLine}>{'  '}opponent: "{challenge.opponent}",</Text>
-            <Text style={styles.codeLine}>{'  '}occlusionMethod: "{challenge.occlusionMethod}",</Text>
-            <Text style={styles.codeLine}>{'  '}shooterSubmitted: {isShooterComplete ? 'true' : 'false'},</Text>
-            <Text style={styles.codeLine}>{'  '}goalkeeperSubmitted: {isGoalkeeperComplete ? 'true' : 'false'},</Text>
-
-            {shooterUpload && (
-              <>
-                <Text style={styles.codeLine}>{'  '}shooterUpload: {'{'}</Text>
-                <Text style={styles.codeLine}>{'    '}submittedAt: "{shooterUpload.submittedAt}",</Text>
-                <Text style={styles.codeLine}>{'    '}cameraAngle: "{shooterUpload.cameraAngle}",</Text>
-                <Text style={styles.codeLine}>{'    '}shotNotes: "{shooterUpload.shotNotes || 'None'}",</Text>
-                <Text style={styles.codeLine}>{'    '}videoSelected: {shooterUpload.videoSelected ? 'true' : 'false'},</Text>
-                <Text style={styles.codeLine}>{'    '}videoFilename: "{shooterUpload.videoFilename}",</Text>
-                <Text style={styles.codeLine}>{'  '}{'},'}</Text>
-              </>
-            )}
-
-            {goalkeeperResponse && (
-              <>
-                <Text style={styles.codeLine}>{'  '}goalkeeperResponse: {'{'}</Text>
-                <Text style={styles.codeLine}>{'    '}submittedAt: "{goalkeeperResponse.submittedAt}",</Text>
-                <Text style={styles.codeLine}>{'    '}reactionDirection: "{goalkeeperResponse.reactionDirection}",</Text>
-                <Text style={styles.codeLine}>{'    '}reactionTimingNote: "{goalkeeperResponse.reactionTimingNote || 'None'}",</Text>
-                <Text style={styles.codeLine}>{'    '}saveAttemptResult: "{goalkeeperResponse.saveAttemptResult}",</Text>
-                <Text style={styles.codeLine}>{'    '}responseVideoSelected: {goalkeeperResponse.responseVideoSelected ? 'true' : 'false'},</Text>
-                <Text style={styles.codeLine}>{'    '}videoFilename: "{goalkeeperResponse.videoFilename}",</Text>
-                <Text style={styles.codeLine}>{'  '}{'}'}</Text>
-              </>
-            )}
-
-            <Text style={styles.codeLine}>{'}'}</Text>
+            <Text style={styles.cardTitle}>Session JSON Preview</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator>
+              <Text style={styles.jsonText}>{exportJson}</Text>
+            </ScrollView>
           </View>
 
           <View style={styles.card}>
@@ -356,7 +330,6 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 },
   row: { fontSize: 16, color: '#374151', marginBottom: 12 },
   label: { fontWeight: '700', color: '#111827' },
-  codeLine: { fontSize: 13, color: '#1F2937', fontFamily: 'Courier', marginBottom: 4 },
   notesInput: {
     minHeight: 100,
     backgroundColor: '#FFFFFF',
@@ -406,6 +379,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: '#4B5563',
+  },
+  jsonText: {
+    fontSize: 12,
+    color: '#1F2937',
+    fontFamily: 'Courier',
+    lineHeight: 18,
   },
   actionBar: {
     marginTop: 8,
