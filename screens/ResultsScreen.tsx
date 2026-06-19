@@ -27,6 +27,10 @@ export default function ResultsScreen({ navigation }: Props) {
     setAnalystNotes,
     setQualityChecklist,
     setRemoteId,
+    isSyncing,
+    syncError,
+    setIsSyncing,
+    setSyncError,
   } = useChallenge();
 
   if (!currentSession) {
@@ -87,6 +91,9 @@ export default function ResultsScreen({ navigation }: Props) {
 
   const handleSaveToSupabase = async () => {
     try {
+      setIsSyncing(true);
+      setSyncError(null);
+
       const result = await saveSessionToSupabase(currentSession, completenessScore);
 
       if (!remoteId && result.remoteId) {
@@ -100,8 +107,12 @@ export default function ResultsScreen({ navigation }: Props) {
 
       Alert.alert('Updated', 'Existing session updated in Supabase.');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unexpected error while saving session.';
+      const message =
+        error instanceof Error ? error.message : 'Unexpected error while saving session.';
+      setSyncError(message);
       Alert.alert('Save failed', message);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -149,6 +160,13 @@ export default function ResultsScreen({ navigation }: Props) {
 
           <Text style={styles.title}>Results</Text>
           <Text style={styles.subtitle}>Example version 1 output for the challenge.</Text>
+
+          {syncError && (
+            <View style={styles.errorCard}>
+              <Text style={styles.errorTitle}>Backend Error</Text>
+              <Text style={styles.errorText}>{syncError}</Text>
+            </View>
+          )}
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Session Completeness Score</Text>
@@ -262,9 +280,17 @@ export default function ResultsScreen({ navigation }: Props) {
             </ScrollView>
           </View>
 
-          <TouchableOpacity style={styles.saveButton} onPress={handleSaveToSupabase}>
+          <TouchableOpacity
+            style={[styles.saveButton, isSyncing && styles.saveButtonDisabled]}
+            onPress={handleSaveToSupabase}
+            disabled={isSyncing}
+          >
             <Text style={styles.saveButtonText}>
-              {remoteId ? 'Update in Supabase' : 'Save to Supabase'}
+              {isSyncing
+                ? 'Syncing…'
+                : remoteId
+                ? 'Update in Supabase'
+                : 'Save to Supabase'}
             </Text>
           </TouchableOpacity>
 
@@ -300,6 +326,25 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+  },
+  errorCard: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  errorTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#991B1B',
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#B91C1C',
   },
   cardTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 },
   row: { fontSize: 16, color: '#374151', marginBottom: 12 },
@@ -391,6 +436,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#86EFAC',
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
   },
   saveButtonText: {
     color: '#166534',

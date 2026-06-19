@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+\import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Challenge } from '../types/challenge';
 import type { ShooterUploadData } from '../types/challenge';
@@ -9,6 +9,10 @@ type ChallengeContextType = {
   currentSession: ChallengeSession | null;
   sessionHistory: ChallengeSession[];
   isHydrated: boolean;
+  isSyncing: boolean;
+  syncError: string | null;
+  setIsSyncing: (value: boolean) => void;
+  setSyncError: (value: string | null) => void;
   createSession: (challenge: Challenge) => void;
   setShooterUploadData: (data: ShooterUploadData | null) => void;
   setGoalkeeperResponseData: (data: GoalkeeperResponseData | null) => void;
@@ -38,6 +42,8 @@ export function ChallengeProvider({ children }: Props) {
   const [currentSession, setCurrentSession] = useState<ChallengeSession | null>(null);
   const [sessionHistory, setSessionHistoryState] = useState<ChallengeSession[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadStoredState = async () => {
@@ -212,6 +218,10 @@ export function ChallengeProvider({ children }: Props) {
       currentSession,
       sessionHistory,
       isHydrated,
+      isSyncing,
+      syncError,
+      setIsSyncing,
+      setSyncError,
       createSession,
       setShooterUploadData,
       setGoalkeeperResponseData,
@@ -223,7 +233,7 @@ export function ChallengeProvider({ children }: Props) {
       loadSessionObject,
       resetSession,
     }),
-    [currentSession, sessionHistory, isHydrated]
+    [currentSession, sessionHistory, isHydrated, isSyncing, syncError]
   );
 
   return <ChallengeContext.Provider value={value}>{children}</ChallengeContext.Provider>;

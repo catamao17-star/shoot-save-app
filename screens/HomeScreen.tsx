@@ -17,10 +17,17 @@ export default function HomeScreen({ navigation }: Props) {
     loadSessionFromHistory,
     loadSessionObject,
     resetSession,
+    isSyncing,
+    syncError,
+    setIsSyncing,
+    setSyncError,
   } = useChallenge();
 
   const fetchBackendSessions = async (showAlert = false) => {
     try {
+      setIsSyncing(true);
+      setSyncError(null);
+
       const parsedSessions = await fetchSessionsFromSupabase(10);
 
       setSessionHistory(parsedSessions);
@@ -33,10 +40,15 @@ export default function HomeScreen({ navigation }: Props) {
         Alert.alert('Loaded', `${parsedSessions.length} session(s) loaded from Supabase.`);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unexpected error while loading sessions.';
+      const message =
+        error instanceof Error ? error.message : 'Unexpected error while loading sessions.';
+      setSyncError(message);
+
       if (showAlert) {
         Alert.alert('Load failed', message);
       }
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -109,9 +121,22 @@ export default function HomeScreen({ navigation }: Props) {
             </Text>
           </View>
 
-          <TouchableOpacity style={styles.loadButton} onPress={handleLoadFromSupabase}>
-            <Text style={styles.loadButtonText}>Refresh from Supabase</Text>
+          <TouchableOpacity
+            style={[styles.loadButton, isSyncing && styles.loadButtonDisabled]}
+            onPress={handleLoadFromSupabase}
+            disabled={isSyncing}
+          >
+            <Text style={styles.loadButtonText}>
+              {isSyncing ? 'Syncing…' : 'Refresh from Supabase'}
+            </Text>
           </TouchableOpacity>
+
+          {syncError && (
+            <View style={styles.errorCard}>
+              <Text style={styles.errorTitle}>Backend Error</Text>
+              <Text style={styles.errorText}>{syncError}</Text>
+            </View>
+          )}
 
           {challenge && (
             <View style={styles.card}>
@@ -178,7 +203,9 @@ export default function HomeScreen({ navigation }: Props) {
             <Text style={styles.historyTitle}>Recent Session History</Text>
 
             {sessionHistory.length === 0 ? (
-              <Text style={styles.historyEmpty}>No completed sessions yet.</Text>
+              <Text style={styles.historyEmpty}>
+                {isSyncing ? 'Loading sessions…' : 'No completed sessions yet.'}
+              </Text>
             ) : (
               sessionHistory.slice(0, 10).map((session) => (
                 <TouchableOpacity
@@ -226,6 +253,25 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
+  errorCard: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  errorTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#991B1B',
+    marginBottom: 8,
+  },
+  errorText: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#B91C1C',
+  },
   cardTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 10 },
   cardText: { fontSize: 15, lineHeight: 22, color: '#4B5563', marginBottom: 4 },
   label: { fontWeight: '700', color: '#111827' },
@@ -237,6 +283,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     borderWidth: 1,
     borderColor: '#86EFAC',
+  },
+  loadButtonDisabled: {
+    opacity: 0.6,
   },
   loadButtonText: {
     color: '#166534',
