@@ -50,7 +50,7 @@ export default function HomeScreen({ navigation }: Props) {
       setIsSyncing(true);
       setSyncError(null);
 
-      const parsedSessions = await fetchSessionsFromSupabase(10);
+      const parsedSessions = await fetchSessionsFromSupabase(5);
 
       setSessionHistory(parsedSessions);
 
@@ -190,6 +190,13 @@ export default function HomeScreen({ navigation }: Props) {
             </Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={styles.sessionsButton}
+            onPress={() => navigation.navigate('MySessions')}
+          >
+            <Text style={styles.sessionsButtonText}>Open My Sessions</Text>
+          </TouchableOpacity>
+
           {syncError && (
             <View style={styles.errorCard}>
               <Text style={styles.errorTitle}>Backend Error</Text>
@@ -266,7 +273,7 @@ export default function HomeScreen({ navigation }: Props) {
                 {isSyncing ? 'Loading sessions...' : 'No completed sessions yet.'}
               </Text>
             ) : (
-              sessionHistory.slice(0, 10).map((session) => (
+              sessionHistory.slice(0, 5).map((session) => (
                 <TouchableOpacity
                   key={session.challenge.id}
                   style={styles.historyItem}
@@ -375,6 +382,18 @@ const styles = StyleSheet.create({
   },
   loadButtonText: {
     color: '#166534',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  sessionsButton: {
+    backgroundColor: '#DBEAFE',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  sessionsButtonText: {
+    color: '#1D4ED8',
     fontSize: 16,
     fontWeight: '700',
   },

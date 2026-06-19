@@ -7,6 +7,7 @@ import { supabase } from './lib/supabase';
 import { ChallengeProvider } from './context/ChallengeContext';
 import AuthScreen from './screens/AuthScreen';
 import HomeScreen from './screens/HomeScreen';
+import MySessionsScreen from './screens/MySessionsScreen';
 import CreateChallengeScreen from './screens/CreateChallengeScreen';
 import ShooterUploadScreen from './screens/ShooterUploadScreen';
 import GoalkeeperResponseScreen from './screens/GoalkeeperResponseScreen';
@@ -15,6 +16,7 @@ import ResultsScreen from './screens/ResultsScreen';
 export type RootStackParamList = {
   Auth: undefined;
   Home: undefined;
+  MySessions: undefined;
   CreateChallenge: undefined;
   ShooterUpload: undefined;
   GoalkeeperResponse: undefined;
@@ -67,6 +69,7 @@ function AppNavigator() {
         {session ? (
           <>
             <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="MySessions" component={MySessionsScreen} />
             <Stack.Screen name="CreateChallenge" component={CreateChallengeScreen} />
             <Stack.Screen name="ShooterUpload" component={ShooterUploadScreen} />
             <Stack.Screen name="GoalkeeperResponse" component={GoalkeeperResponseScreen} />
