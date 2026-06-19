@@ -1,4 +1,3 @@
-// services/sessionService.ts
 import { supabase } from '../lib/supabase';
 import type { ChallengeSession } from '../types/session';
 
@@ -11,6 +10,19 @@ type SessionRow = {
   user_id: string;
   payload: ChallengeSession;
 };
+
+function mapRowsToSessions(rows: SessionRow[]): ChallengeSession[] {
+  return rows
+    .map((row) => {
+      const payload = row.payload as ChallengeSession;
+
+      return {
+        ...payload,
+        remoteId: payload.remoteId ?? row.id,
+      };
+    })
+    .filter(Boolean);
+}
 
 export async function fetchSessionsFromSupabase(limit = 10): Promise<ChallengeSession[]> {
   const {
@@ -33,16 +45,7 @@ export async function fetchSessionsFromSupabase(limit = 10): Promise<ChallengeSe
     throw new Error(error.message);
   }
 
-  return ((data ?? []) as SessionRow[])
-    .map((row) => {
-      const payload = row.payload as ChallengeSession;
-
-      return {
-        ...payload,
-        remoteId: payload.remoteId ?? row.id,
-      };
-    })
-    .filter(Boolean);
+  return mapRowsToSessions((data ?? []) as SessionRow[]);
 }
 
 export async function fetchAllSessionsFromSupabase(): Promise<ChallengeSession[]> {
@@ -65,16 +68,46 @@ export async function fetchAllSessionsFromSupabase(): Promise<ChallengeSession[]
     throw new Error(error.message);
   }
 
-  return ((data ?? []) as SessionRow[])
-    .map((row) => {
-      const payload = row.payload as ChallengeSession;
+  return mapRowsToSessions((data ?? []) as SessionRow[]);
+}
 
-      return {
-        ...payload,
-        remoteId: payload.remoteId ?? row.id,
-      };
-    })
-    .filter(Boolean);
+export async function fetchPagedSessionsFromSupabase(
+  page: number,
+  pageSize: number
+): Promise<{
+  sessions: ChallengeSession[];
+  hasMore: boolean;
+}> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    throw new Error('No authenticated user found.');
+  }
+
+  const from = page * pageSize;
+  const to = from + pageSize - 1;
+
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const rows = (data ?? []) as SessionRow[];
+  const sessions = mapRowsToSessions(rows);
+
+  return {
+    sessions,
+    hasMore: rows.length === pageSize,
+  };
 }
 
 type SaveSessionResult = {

@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   deleteSessionFromSupabase,
-  fetchAllSessionsFromSupabase,
+  fetchPagedSessionsFromSupabase,
 } from '../services/sessionService';
 import { useChallenge } from '../context/ChallengeContext';
 import type { ChallengeSession, SessionStatus } from '../types/session';
@@ -23,6 +23,8 @@ type Props = {
 
 type FilterOption = 'all' | SessionStatus;
 type SortOption = 'newest' | 'oldest';
+
+const PAGE_SIZE = 10;
 
 const filterOptions: { label: string; value: FilterOption }[] = [
   { label: 'All', value: 'all' },
@@ -35,15 +37,18 @@ const filterOptions: { label: string; value: FilterOption }[] = [
 export default function MySessionsScreen({ navigation }: Props) {
   const { currentSession, loadSessionObject, setSessionHistory, resetSession } = useChallenge();
   const [sessions, setSessions] = useState<ChallengeSession[]>([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [deletingRemoteId, setDeletingRemoteId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<FilterOption>('all');
   const [selectedSort, setSelectedSort] = useState<SortOption>('newest');
   const [searchText, setSearchText] = useState('');
 
-  const loadSessions = async (refresh = false) => {
+  const loadFirstPage = async (refresh = false) => {
     try {
       if (refresh) {
         setIsRefreshing(true);
@@ -53,9 +58,11 @@ export default function MySessionsScreen({ navigation }: Props) {
 
       setError(null);
 
-      const data = await fetchAllSessionsFromSupabase();
-      setSessions(data);
-      setSessionHistory(data);
+      const result = await fetchPagedSessionsFromSupabase(0, PAGE_SIZE);
+      setSessions(result.sessions);
+      setSessionHistory(result.sessions);
+      setPage(0);
+      setHasMore(result.hasMore);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : 'Unexpected error while loading sessions.';
@@ -66,8 +73,30 @@ export default function MySessionsScreen({ navigation }: Props) {
     }
   };
 
+  const loadMore = async () => {
+    if (!hasMore || isLoadingMore) return;
+
+    try {
+      setIsLoadingMore(true);
+      const nextPage = page + 1;
+      const result = await fetchPagedSessionsFromSupabase(nextPage, PAGE_SIZE);
+
+      const updated = [...sessions, ...result.sessions];
+      setSessions(updated);
+      setSessionHistory(updated);
+      setPage(nextPage);
+      setHasMore(result.hasMore);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Unexpected error while loading more sessions.';
+      Alert.alert('Load more failed', message);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   useEffect(() => {
-    loadSessions(false);
+    loadFirstPage(false);
   }, []);
 
   const visibleSessions = useMemo(() => {
@@ -119,7 +148,7 @@ export default function MySessionsScreen({ navigation }: Props) {
   };
 
   const handleRefresh = async () => {
-    await loadSessions(true);
+    await loadFirstPage(true);
   };
 
   const handleDeleteSession = (session: ChallengeSession) => {
@@ -265,7 +294,7 @@ export default function MySessionsScreen({ navigation }: Props) {
             </View>
 
             <Text style={styles.resultCount}>
-              Showing {visibleSessions.length} of {sessions.length} session(s)
+              Showing {visibleSessions.length} loaded session(s)
             </Text>
           </View>
 
@@ -287,63 +316,77 @@ export default function MySessionsScreen({ navigation }: Props) {
               </Text>
             </View>
           ) : (
-            visibleSessions.map((session) => {
-              const isDeleting = deletingRemoteId === session.remoteId;
-              const editLabel =
-                session.status === 'created'
-                  ? 'Continue Shooter Step'
-                  : session.status === 'shooter_submitted'
-                  ? 'Continue Goalkeeper Step'
-                  : 'Open Final Results';
+            <>
+              {visibleSessions.map((session) => {
+                const isDeleting = deletingRemoteId === session.remoteId;
+                const editLabel =
+                  session.status === 'created'
+                    ? 'Continue Shooter Step'
+                    : session.status === 'shooter_submitted'
+                    ? 'Continue Goalkeeper Step'
+                    : 'Open Final Results';
 
-              return (
-                <View
-                  key={`${session.remoteId ?? session.challenge.id}`}
-                  style={styles.sessionCard}
-                >
-                  <View style={styles.sessionHeader}>
-                    <Text style={styles.sessionTitle}>{session.challenge.challengeName}</Text>
-                    <View style={styles.statusBadge}>
-                      <Text style={styles.statusBadgeText}>
-                        {getStatusLabel(session.status)}
-                      </Text>
+                return (
+                  <View
+                    key={`${session.remoteId ?? session.challenge.id}`}
+                    style={styles.sessionCard}
+                  >
+                    <View style={styles.sessionHeader}>
+                      <Text style={styles.sessionTitle}>{session.challenge.challengeName}</Text>
+                      <View style={styles.statusBadge}>
+                        <Text style={styles.statusBadgeText}>
+                          {getStatusLabel(session.status)}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
 
-                  <Text style={styles.sessionText}>Opponent: {session.challenge.opponent}</Text>
-                  <Text style={styles.sessionText}>
-                    Remote ID: {session.remoteId ?? 'Not synced'}
-                  </Text>
-                  <Text style={styles.sessionText}>
-                    Created: {new Date(session.challenge.createdAt).toLocaleString()}
-                  </Text>
-
-                  <TouchableOpacity
-                    style={styles.openButton}
-                    onPress={() => handleOpenSession(session)}
-                  >
-                    <Text style={styles.openButtonText}>Open in Results</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => handleEditSession(session)}
-                  >
-                    <Text style={styles.editButtonText}>{editLabel}</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.deleteButton, isDeleting && styles.buttonDisabled]}
-                    onPress={() => handleDeleteSession(session)}
-                    disabled={isDeleting}
-                  >
-                    <Text style={styles.deleteButtonText}>
-                      {isDeleting ? 'Deleting...' : 'Delete Session'}
+                    <Text style={styles.sessionText}>Opponent: {session.challenge.opponent}</Text>
+                    <Text style={styles.sessionText}>
+                      Remote ID: {session.remoteId ?? 'Not synced'}
                     </Text>
-                  </TouchableOpacity>
-                </View>
-              );
-            })
+                    <Text style={styles.sessionText}>
+                      Created: {new Date(session.challenge.createdAt).toLocaleString()}
+                    </Text>
+
+                    <TouchableOpacity
+                      style={styles.openButton}
+                      onPress={() => handleOpenSession(session)}
+                    >
+                      <Text style={styles.openButtonText}>Open in Results</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={() => handleEditSession(session)}
+                    >
+                      <Text style={styles.editButtonText}>{editLabel}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.deleteButton, isDeleting && styles.buttonDisabled]}
+                      onPress={() => handleDeleteSession(session)}
+                      disabled={isDeleting}
+                    >
+                      <Text style={styles.deleteButtonText}>
+                        {isDeleting ? 'Deleting...' : 'Delete Session'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+
+              {hasMore && !searchText.trim() && selectedFilter === 'all' && (
+                <TouchableOpacity
+                  style={[styles.loadMoreButton, isLoadingMore && styles.buttonDisabled]}
+                  onPress={loadMore}
+                  disabled={isLoadingMore}
+                >
+                  <Text style={styles.loadMoreButtonText}>
+                    {isLoadingMore ? 'Loading more...' : 'Load More'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
 
           <TouchableOpacity
@@ -538,6 +581,19 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     color: '#B91C1C',
     fontSize: 15,
+    fontWeight: '700',
+  },
+  loadMoreButton: {
+    backgroundColor: '#DBEAFE',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  loadMoreButtonText: {
+    color: '#1D4ED8',
+    fontSize: 16,
     fontWeight: '700',
   },
   buttonDisabled: {
