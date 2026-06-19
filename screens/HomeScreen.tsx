@@ -1,14 +1,32 @@
 import { StatusBar } from 'expo-status-bar';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { supabase } from '../lib/supabase';
 import { useChallenge } from '../context/ChallengeContext';
+import type { ChallengeSession } from '../types/session';
 
 type Props = {
   navigation: any;
 };
 
+type SessionRow = {
+  id: number;
+  created_at: string;
+  challenge_id: string;
+  session_status: string;
+  completeness_score: number;
+  payload: any;
+};
+
 export default function HomeScreen({ navigation }: Props) {
-  const { currentSession, sessionHistory, loadSessionFromHistory, resetSession } = useChallenge();
+  const {
+    currentSession,
+    sessionHistory,
+    setSessionHistory,
+    loadSessionFromHistory,
+    loadSessionObject,
+    resetSession,
+  } = useChallenge();
 
   const handleResetChallenge = () => {
     Alert.alert(
@@ -48,6 +66,35 @@ export default function HomeScreen({ navigation }: Props) {
     navigation.navigate('Results');
   };
 
+  const handleLoadFromSupabase = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        Alert.alert('Load failed', error.message);
+        return;
+      }
+
+      const parsedSessions: ChallengeSession[] = ((data ?? []) as SessionRow[])
+        .map((row) => row.payload as ChallengeSession)
+        .filter(Boolean);
+
+      setSessionHistory(parsedSessions);
+
+      if (parsedSessions.length > 0) {
+        loadSessionObject(parsedSessions[0]);
+      }
+
+      Alert.alert('Loaded', `${parsedSessions.length} session(s) loaded from Supabase.`);
+    } catch (error) {
+      Alert.alert('Load failed', 'Unexpected error while loading sessions.');
+    }
+  };
+
   const challenge = currentSession?.challenge;
   const shooterUpload = currentSession?.shooterUpload;
   const goalkeeperResponse = currentSession?.goalkeeperResponse;
@@ -70,6 +117,10 @@ export default function HomeScreen({ navigation }: Props) {
               and the app stores the challenge flow for future data collection.
             </Text>
           </View>
+
+          <TouchableOpacity style={styles.loadButton} onPress={handleLoadFromSupabase}>
+            <Text style={styles.loadButtonText}>Load from Supabase</Text>
+          </TouchableOpacity>
 
           {challenge && (
             <View style={styles.card}>
@@ -138,7 +189,7 @@ export default function HomeScreen({ navigation }: Props) {
             {sessionHistory.length === 0 ? (
               <Text style={styles.historyEmpty}>No completed sessions yet.</Text>
             ) : (
-              sessionHistory.slice(0, 5).map((session) => (
+              sessionHistory.slice(0, 10).map((session) => (
                 <TouchableOpacity
                   key={session.challenge.id}
                   style={styles.historyItem}
@@ -189,6 +240,20 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 10 },
   cardText: { fontSize: 15, lineHeight: 22, color: '#4B5563', marginBottom: 4 },
   label: { fontWeight: '700', color: '#111827' },
+  loadButton: {
+    backgroundColor: '#DCFCE7',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  loadButtonText: {
+    color: '#166534',
+    fontSize: 16,
+    fontWeight: '700',
+  },
   resumeButton: {
     backgroundColor: '#DBEAFE',
     paddingVertical: 16,

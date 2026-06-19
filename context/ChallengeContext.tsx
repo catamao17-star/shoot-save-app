@@ -14,7 +14,9 @@ type ChallengeContextType = {
   setGoalkeeperResponseData: (data: GoalkeeperResponseData | null) => void;
   setAnalystNotes: (notes: string) => void;
   setQualityChecklist: (checklist: SessionQualityChecklist) => void;
+  setSessionHistory: (sessions: ChallengeSession[]) => void;
   loadSessionFromHistory: (sessionId: string) => void;
+  loadSessionObject: (session: ChallengeSession) => void;
   resetSession: () => void;
 };
 
@@ -33,7 +35,7 @@ type PersistedState = {
 
 export function ChallengeProvider({ children }: Props) {
   const [currentSession, setCurrentSession] = useState<ChallengeSession | null>(null);
-  const [sessionHistory, setSessionHistory] = useState<ChallengeSession[]>([]);
+  const [sessionHistory, setSessionHistoryState] = useState<ChallengeSession[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -44,7 +46,7 @@ export function ChallengeProvider({ children }: Props) {
         if (raw) {
           const parsed: PersistedState = JSON.parse(raw);
           setCurrentSession(parsed.currentSession ?? null);
-          setSessionHistory(parsed.sessionHistory ?? []);
+          setSessionHistoryState(parsed.sessionHistory ?? []);
         }
       } catch (error) {
         console.error('Failed to load persisted app state:', error);
@@ -113,7 +115,7 @@ export function ChallengeProvider({ children }: Props) {
       };
 
       if (data) {
-        setSessionHistory((history) => {
+        setSessionHistoryState((history) => {
           const withoutCurrent = history.filter(
             (session) => session.challenge.id !== updatedSession.challenge.id
           );
@@ -135,7 +137,7 @@ export function ChallengeProvider({ children }: Props) {
       };
 
       if (updatedSession.status === 'complete') {
-        setSessionHistory((history) => {
+        setSessionHistoryState((history) => {
           const withoutCurrent = history.filter(
             (session) => session.challenge.id !== updatedSession.challenge.id
           );
@@ -157,7 +159,7 @@ export function ChallengeProvider({ children }: Props) {
       };
 
       if (updatedSession.status === 'complete') {
-        setSessionHistory((history) => {
+        setSessionHistoryState((history) => {
           const withoutCurrent = history.filter(
             (session) => session.challenge.id !== updatedSession.challenge.id
           );
@@ -169,10 +171,18 @@ export function ChallengeProvider({ children }: Props) {
     });
   };
 
+  const setSessionHistory = (sessions: ChallengeSession[]) => {
+    setSessionHistoryState(sessions);
+  };
+
   const loadSessionFromHistory = (sessionId: string) => {
     const sessionToLoad = sessionHistory.find((session) => session.challenge.id === sessionId);
     if (!sessionToLoad) return;
     setCurrentSession(sessionToLoad);
+  };
+
+  const loadSessionObject = (session: ChallengeSession) => {
+    setCurrentSession(session);
   };
 
   const resetSession = () => {
@@ -189,7 +199,9 @@ export function ChallengeProvider({ children }: Props) {
       setGoalkeeperResponseData,
       setAnalystNotes,
       setQualityChecklist,
+      setSessionHistory,
       loadSessionFromHistory,
+      loadSessionObject,
       resetSession,
     }),
     [currentSession, sessionHistory, isHydrated]
