@@ -15,4 +15,5 @@ export type ChallengeSession = {
   shooterUpload: ShooterUploadData | null;
   goalkeeperResponse: GoalkeeperResponseData | null;
   status: SessionStatus;
+  analystNotes: string;
 };

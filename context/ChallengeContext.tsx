@@ -10,6 +10,7 @@ type ChallengeContextType = {
   createSession: (challenge: Challenge) => void;
   setShooterUploadData: (data: ShooterUploadData | null) => void;
   setGoalkeeperResponseData: (data: GoalkeeperResponseData | null) => void;
+  setAnalystNotes: (notes: string) => void;
   loadSessionFromHistory: (sessionId: string) => void;
   resetSession: () => void;
 };
@@ -30,6 +31,7 @@ export function ChallengeProvider({ children }: Props) {
       shooterUpload: null,
       goalkeeperResponse: null,
       status: 'created',
+      analystNotes: '',
     });
   };
 
@@ -68,6 +70,28 @@ export function ChallengeProvider({ children }: Props) {
     });
   };
 
+  const setAnalystNotes = (notes: string) => {
+    setCurrentSession((prev) => {
+      if (!prev) return prev;
+
+      const updatedSession = {
+        ...prev,
+        analystNotes: notes,
+      };
+
+      if (updatedSession.status === 'complete') {
+        setSessionHistory((history) => {
+          const withoutCurrent = history.filter(
+            (session) => session.challenge.id !== updatedSession.challenge.id
+          );
+          return [updatedSession, ...withoutCurrent];
+        });
+      }
+
+      return updatedSession;
+    });
+  };
+
   const loadSessionFromHistory = (sessionId: string) => {
     const sessionToLoad = sessionHistory.find((session) => session.challenge.id === sessionId);
     if (!sessionToLoad) return;
@@ -85,6 +109,7 @@ export function ChallengeProvider({ children }: Props) {
       createSession,
       setShooterUploadData,
       setGoalkeeperResponseData,
+      setAnalystNotes,
       loadSessionFromHistory,
       resetSession,
     }),

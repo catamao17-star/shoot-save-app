@@ -1,5 +1,13 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { useChallenge } from '../context/ChallengeContext';
 import ProgressSteps from '../components/ProgressSteps';
 
@@ -8,7 +16,7 @@ type Props = {
 };
 
 export default function ResultsScreen({ navigation }: Props) {
-  const { currentSession, resetSession } = useChallenge();
+  const { currentSession, resetSession, setAnalystNotes } = useChallenge();
 
   if (!currentSession) {
     return (
@@ -21,7 +29,7 @@ export default function ResultsScreen({ navigation }: Props) {
     );
   }
 
-  const { challenge, shooterUpload, goalkeeperResponse, status } = currentSession;
+  const { challenge, shooterUpload, goalkeeperResponse, status, analystNotes } = currentSession;
 
   const isShooterComplete = !!shooterUpload;
   const isGoalkeeperComplete = !!goalkeeperResponse;
@@ -85,11 +93,23 @@ export default function ResultsScreen({ navigation }: Props) {
           </View>
 
           <View style={styles.card}>
+            <Text style={styles.cardTitle}>Analyst Notes</Text>
+            <TextInput
+              style={styles.notesInput}
+              placeholder="Add a short analyst/reviewer note for this session"
+              value={analystNotes}
+              onChangeText={setAnalystNotes}
+              multiline
+            />
+          </View>
+
+          <View style={styles.card}>
             <Text style={styles.cardTitle}>Export-Ready Record Summary</Text>
             <Text style={styles.codeLine}>{'{'}</Text>
             <Text style={styles.codeLine}>{'  '}challengeId: "{challenge.id}",</Text>
             <Text style={styles.codeLine}>{'  '}createdAt: "{challenge.createdAt}",</Text>
             <Text style={styles.codeLine}>{'  '}status: "{status}",</Text>
+            <Text style={styles.codeLine}>{'  '}analystNotes: "{analystNotes || 'None'}",</Text>
             <Text style={styles.codeLine}>{'  '}challengeName: "{challenge.challengeName}",</Text>
             <Text style={styles.codeLine}>{'  '}opponent: "{challenge.opponent}",</Text>
             <Text style={styles.codeLine}>{'  '}occlusionMethod: "{challenge.occlusionMethod}",</Text>
@@ -236,6 +256,15 @@ const styles = StyleSheet.create({
   row: { fontSize: 16, color: '#374151', marginBottom: 12 },
   label: { fontWeight: '700', color: '#111827' },
   codeLine: { fontSize: 13, color: '#1F2937', fontFamily: 'Courier', marginBottom: 4 },
+  notesInput: {
+    minHeight: 100,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    textAlignVertical: 'top',
+  },
   actionBar: {
     marginTop: 8,
     gap: 12,
