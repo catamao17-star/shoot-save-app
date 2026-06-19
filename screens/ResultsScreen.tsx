@@ -119,9 +119,7 @@ export default function ResultsScreen({ navigation }: Props) {
                     style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
                     onPress={() => updateChecklistField('cueHidingQuality', option)}
                   >
-                    <Text
-                      style={[styles.optionText, isSelected && styles.optionTextSelected]}
-                    >
+                    <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
                       {option}
                     </Text>
                   </TouchableOpacity>
@@ -139,9 +137,7 @@ export default function ResultsScreen({ navigation }: Props) {
                     style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
                     onPress={() => updateChecklistField('cameraSetupQuality', option)}
                   >
-                    <Text
-                      style={[styles.optionText, isSelected && styles.optionTextSelected]}
-                    >
+                    <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
                       {option}
                     </Text>
                   </TouchableOpacity>
@@ -159,9 +155,7 @@ export default function ResultsScreen({ navigation }: Props) {
                     style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
                     onPress={() => updateChecklistField('reactionClarity', option)}
                   >
-                    <Text
-                      style={[styles.optionText, isSelected && styles.optionTextSelected]}
-                    >
+                    <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>
                       {option}
                     </Text>
                   </TouchableOpacity>
@@ -204,6 +198,7 @@ export default function ResultsScreen({ navigation }: Props) {
                 <Text style={styles.codeLine}>{'    '}cameraAngle: "{shooterUpload.cameraAngle}",</Text>
                 <Text style={styles.codeLine}>{'    '}shotNotes: "{shooterUpload.shotNotes || 'None'}",</Text>
                 <Text style={styles.codeLine}>{'    '}videoSelected: {shooterUpload.videoSelected ? 'true' : 'false'},</Text>
+                <Text style={styles.codeLine}>{'    '}videoFilename: "{shooterUpload.videoFilename}",</Text>
                 <Text style={styles.codeLine}>{'  '}{'},'}</Text>
               </>
             )}
@@ -216,6 +211,7 @@ export default function ResultsScreen({ navigation }: Props) {
                 <Text style={styles.codeLine}>{'    '}reactionTimingNote: "{goalkeeperResponse.reactionTimingNote || 'None'}",</Text>
                 <Text style={styles.codeLine}>{'    '}saveAttemptResult: "{goalkeeperResponse.saveAttemptResult}",</Text>
                 <Text style={styles.codeLine}>{'    '}responseVideoSelected: {goalkeeperResponse.responseVideoSelected ? 'true' : 'false'},</Text>
+                <Text style={styles.codeLine}>{'    '}videoFilename: "{goalkeeperResponse.videoFilename}",</Text>
                 <Text style={styles.codeLine}>{'  '}{'}'}</Text>
               </>
             )}
@@ -257,6 +253,9 @@ export default function ResultsScreen({ navigation }: Props) {
               <Text style={styles.row}>
                 <Text style={styles.label}>Video Selected:</Text> {shooterUpload.videoSelected ? 'Yes' : 'No'}
               </Text>
+              <Text style={styles.row}>
+                <Text style={styles.label}>Video Filename:</Text> {shooterUpload.videoFilename}
+              </Text>
             </View>
           )}
 
@@ -277,6 +276,9 @@ export default function ResultsScreen({ navigation }: Props) {
               </Text>
               <Text style={styles.row}>
                 <Text style={styles.label}>Response Video Selected:</Text> {goalkeeperResponse.responseVideoSelected ? 'Yes' : 'No'}
+              </Text>
+              <Text style={styles.row}>
+                <Text style={styles.label}>Video Filename:</Text> {goalkeeperResponse.videoFilename}
               </Text>
             </View>
           )}

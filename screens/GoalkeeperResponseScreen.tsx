@@ -30,6 +30,7 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
   const [reactionTimingNote, setReactionTimingNote] = useState('');
   const [saveAttemptResult, setSaveAttemptResult] = useState<SaveAttemptResult>('Late Reaction');
   const [responseVideoSelected, setResponseVideoSelected] = useState(false);
+  const [videoFilename, setVideoFilename] = useState('goalkeeper-response-demo.mp4');
 
   if (!currentSession) {
     return (
@@ -53,12 +54,18 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
       return;
     }
 
+    if (!videoFilename.trim()) {
+      Alert.alert('Missing filename', 'Please add a mock video filename before continuing.');
+      return;
+    }
+
     const goalkeeperData: GoalkeeperResponseData = {
       submittedAt: new Date().toISOString(),
       reactionDirection,
       reactionTimingNote: reactionTimingNote.trim(),
       saveAttemptResult,
       responseVideoSelected,
+      videoFilename: videoFilename.trim(),
     };
 
     setGoalkeeperResponseData(goalkeeperData);
@@ -98,6 +105,7 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
               <Text style={styles.cardText}>
                 Shot notes: {shooterUpload.shotNotes || 'None provided'}
               </Text>
+              <Text style={styles.cardText}>Video filename: {shooterUpload.videoFilename}</Text>
               <Text style={styles.cardText}>
                 Video selected: {shooterUpload.videoSelected ? 'Yes' : 'No'}
               </Text>
@@ -134,6 +142,14 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
               value={reactionTimingNote}
               onChangeText={setReactionTimingNote}
               multiline
+            />
+
+            <Text style={styles.label}>Mock Video Filename</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="goalkeeper-response-demo.mp4"
+              value={videoFilename}
+              onChangeText={setVideoFilename}
             />
 
             <Text style={styles.label}>Save Attempt Result</Text>
@@ -179,6 +195,7 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
               <Text style={styles.summaryText}>
                 Timing note: {reactionTimingNote.trim() ? reactionTimingNote : 'None yet'}
               </Text>
+              <Text style={styles.summaryText}>Video filename: {videoFilename.trim() || 'None yet'}</Text>
               <Text style={styles.summaryText}>Result: {saveAttemptResult}</Text>
               <Text style={styles.summaryText}>
                 Response video selected: {responseVideoSelected ? 'Yes' : 'No'}

@@ -24,6 +24,7 @@ export default function ShooterUploadScreen({ navigation }: Props) {
   const [selectedCameraAngle, setSelectedCameraAngle] = useState<CameraAngle>('Front');
   const [shotNotes, setShotNotes] = useState('');
   const [videoSelected, setVideoSelected] = useState(false);
+  const [videoFilename, setVideoFilename] = useState('shooter-shot-demo.mp4');
 
   if (!currentSession) {
     return (
@@ -44,11 +45,17 @@ export default function ShooterUploadScreen({ navigation }: Props) {
       return;
     }
 
+    if (!videoFilename.trim()) {
+      Alert.alert('Missing filename', 'Please add a mock video filename before continuing.');
+      return;
+    }
+
     const shooterData: ShooterUploadData = {
       submittedAt: new Date().toISOString(),
       cameraAngle: selectedCameraAngle,
       shotNotes: shotNotes.trim(),
       videoSelected,
+      videoFilename: videoFilename.trim(),
     };
 
     setShooterUploadData(shooterData);
@@ -110,6 +117,14 @@ export default function ShooterUploadScreen({ navigation }: Props) {
               multiline
             />
 
+            <Text style={styles.label}>Mock Video Filename</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="shooter-shot-demo.mp4"
+              value={videoFilename}
+              onChangeText={setVideoFilename}
+            />
+
             <Text style={styles.label}>Shot Video</Text>
             <TouchableOpacity
               style={[styles.videoButton, videoSelected && styles.videoButtonSelected]}
@@ -131,6 +146,7 @@ export default function ShooterUploadScreen({ navigation }: Props) {
               <Text style={styles.summaryText}>
                 Shot notes: {shotNotes.trim() ? shotNotes : 'None yet'}
               </Text>
+              <Text style={styles.summaryText}>Video filename: {videoFilename.trim() || 'None yet'}</Text>
               <Text style={styles.summaryText}>
                 Video selected: {videoSelected ? 'Yes' : 'No'}
               </Text>

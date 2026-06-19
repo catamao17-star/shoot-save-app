@@ -13,6 +13,7 @@ export type ShooterUploadData = {
   cameraAngle: CameraAngle;
   shotNotes: string;
   videoSelected: boolean;
+  videoFilename: string;
 };
 
 export type ReactionDirection = 'Left' | 'Center' | 'Right';
@@ -25,4 +26,5 @@ export type GoalkeeperResponseData = {
   reactionTimingNote: string;
   saveAttemptResult: SaveAttemptResult;
   responseVideoSelected: boolean;
+  videoFilename: string;
 };
