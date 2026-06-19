@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Challenge } from '../types/challenge';
 import type { ShooterUploadData } from '../types/challenge';
 import type { GoalkeeperResponseData } from '../types/challenge';
@@ -7,6 +8,7 @@ import type { ChallengeSession, SessionQualityChecklist } from '../types/session
 type ChallengeContextType = {
   currentSession: ChallengeSession | null;
   sessionHistory: ChallengeSession[];
+  isHydrated: boolean;
   createSession: (challenge: Challenge) => void;
   setShooterUploadData: (data: ShooterUploadData | null) => void;
   setGoalkeeperResponseData: (data: GoalkeeperResponseData | null) => void;
@@ -16,15 +18,62 @@ type ChallengeContextType = {
   resetSession: () => void;
 };
 
+const STORAGE_KEY = 'shoot_save_app_state_v1';
+
 const ChallengeContext = createContext<ChallengeContextType | undefined>(undefined);
 
 type Props = {
   children: ReactNode;
 };
 
+type PersistedState = {
+  currentSession: ChallengeSession | null;
+  sessionHistory: ChallengeSession[];
+};
+
 export function ChallengeProvider({ children }: Props) {
   const [currentSession, setCurrentSession] = useState<ChallengeSession | null>(null);
   const [sessionHistory, setSessionHistory] = useState<ChallengeSession[]>([]);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    const loadStoredState = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+
+        if (raw) {
+          const parsed: PersistedState = JSON.parse(raw);
+          setCurrentSession(parsed.currentSession ?? null);
+          setSessionHistory(parsed.sessionHistory ?? []);
+        }
+      } catch (error) {
+        console.error('Failed to load persisted app state:', error);
+      } finally {
+        setIsHydrated(true);
+      }
+    };
+
+    loadStoredState();
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    const persistState = async () => {
+      try {
+        const payload: PersistedState = {
+          currentSession,
+          sessionHistory,
+        };
+
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch (error) {
+        console.error('Failed to persist app state:', error);
+      }
+    };
+
+    persistState();
+  }, [currentSession, sessionHistory, isHydrated]);
 
   const createSession = (challenge: Challenge) => {
     setCurrentSession({
@@ -80,7 +129,7 @@ export function ChallengeProvider({ children }: Props) {
     setCurrentSession((prev) => {
       if (!prev) return prev;
 
-      const updatedSession = {
+      const updatedSession: ChallengeSession = {
         ...prev,
         analystNotes: notes,
       };
@@ -102,7 +151,7 @@ export function ChallengeProvider({ children }: Props) {
     setCurrentSession((prev) => {
       if (!prev) return prev;
 
-      const updatedSession = {
+      const updatedSession: ChallengeSession = {
         ...prev,
         qualityChecklist: checklist,
       };
@@ -134,6 +183,7 @@ export function ChallengeProvider({ children }: Props) {
     () => ({
       currentSession,
       sessionHistory,
+      isHydrated,
       createSession,
       setShooterUploadData,
       setGoalkeeperResponseData,
@@ -142,7 +192,7 @@ export function ChallengeProvider({ children }: Props) {
       loadSessionFromHistory,
       resetSession,
     }),
-    [currentSession, sessionHistory]
+    [currentSession, sessionHistory, isHydrated]
   );
 
   return <ChallengeContext.Provider value={value}>{children}</ChallengeContext.Provider>;
