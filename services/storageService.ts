@@ -100,3 +100,11 @@ export async function createSignedVideoUrl(path: string, expiresIn = 3600): Prom
 
   return data.signedUrl;
 }
+
+export async function deleteSessionVideoFromSupabase(path: string): Promise<void> {
+  const { error } = await supabase.storage.from(SESSION_VIDEOS_BUCKET).remove([path]);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Alert,
@@ -19,6 +19,7 @@ import type {
 } from '../types/challenge';
 import ProgressSteps from '../components/ProgressSteps';
 import {
+  deleteSessionVideoFromSupabase,
   pickVideoFromLibrary,
   uploadSessionVideoToSupabase,
 } from '../services/storageService';
@@ -51,22 +52,38 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
 
   const challenge = currentSession.challenge;
   const shooterUploadData = currentSession.shooterUpload;
+  const existingGoalkeeperResponse = currentSession.goalkeeperResponse;
+
+  useEffect(() => {
+    if (existingGoalkeeperResponse) {
+      setReactionDirection(existingGoalkeeperResponse.reactionDirection);
+      setReactionTimingNote(existingGoalkeeperResponse.reactionTimingNote);
+      setSaveAttemptResult(existingGoalkeeperResponse.saveAttemptResult);
+      setResponseVideoSelected(existingGoalkeeperResponse.responseVideoSelected);
+      setVideoFilename(existingGoalkeeperResponse.videoFilename ?? '');
+    }
+  }, [existingGoalkeeperResponse]);
 
   const handlePickAndUploadVideo = async () => {
     try {
       setIsUploadingVideo(true);
 
       const uri = await pickVideoFromLibrary();
+      if (!uri) return;
 
-      if (!uri) {
-        return;
-      }
+      const previousPath = videoFilename;
 
       const uploaded = await uploadSessionVideoToSupabase({
         challengeId: challenge.id,
         role: 'goalkeeper',
         localUri: uri,
       });
+
+      if (previousPath && previousPath !== uploaded.path) {
+        try {
+          await deleteSessionVideoFromSupabase(previousPath);
+        } catch {}
+      }
 
       setResponseVideoSelected(true);
       setVideoFilename(uploaded.path);
@@ -79,6 +96,30 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
     } finally {
       setIsUploadingVideo(false);
     }
+  };
+
+  const handleRemoveVideo = async () => {
+    if (!videoFilename) return;
+
+    Alert.alert('Remove video', 'Are you sure you want to remove this goalkeeper video?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteSessionVideoFromSupabase(videoFilename);
+            setResponseVideoSelected(false);
+            setVideoFilename('');
+            Alert.alert('Removed', 'Goalkeeper video removed.');
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : 'Unexpected error while removing video.';
+            Alert.alert('Remove failed', message);
+          }
+        },
+      },
+    ]);
   };
 
   const handleContinue = () => {
@@ -213,9 +254,19 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
               disabled={isUploadingVideo}
             >
               <Text style={styles.videoButtonText}>
-                {isUploadingVideo ? 'Uploading video...' : 'Pick and Upload Goalkeeper Video'}
+                {isUploadingVideo
+                  ? 'Uploading video...'
+                  : videoFilename
+                  ? 'Replace Goalkeeper Video'
+                  : 'Pick and Upload Goalkeeper Video'}
               </Text>
             </TouchableOpacity>
+
+            {!!videoFilename && (
+              <TouchableOpacity style={styles.removeButton} onPress={handleRemoveVideo}>
+                <Text style={styles.removeButtonText}>Remove Goalkeeper Video</Text>
+              </TouchableOpacity>
+            )}
 
             <View style={styles.summaryBox}>
               <Text style={styles.summaryTitle}>Current Goalkeeper Metadata</Text>
@@ -309,6 +360,18 @@ const styles = StyleSheet.create({
   },
   videoButtonText: {
     color: '#1D4ED8',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  removeButton: {
+    backgroundColor: '#FEE2E2',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  removeButtonText: {
+    color: '#B91C1C',
     fontSize: 15,
     fontWeight: '700',
   },

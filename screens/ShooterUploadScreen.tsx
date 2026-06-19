@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Alert,
@@ -12,22 +12,30 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
 import { useChallenge } from '../context/ChallengeContext';
-import type { CameraAngle, ShooterUploadData } from '../types/challenge';
+import type {
+  GoalkeeperResponseData,
+  ReactionDirection,
+  SaveAttemptResult,
+} from '../types/challenge';
 import ProgressSteps from '../components/ProgressSteps';
 import {
+  deleteSessionVideoFromSupabase,
   pickVideoFromLibrary,
   uploadSessionVideoToSupabase,
 } from '../services/storageService';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'ShooterUpload'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'GoalkeeperResponse'>;
 
-const cameraAngleOptions: CameraAngle[] = ['Front', 'Side', 'Behind Goal', 'Custom'];
+const reactionDirectionOptions: ReactionDirection[] = ['Left', 'Center', 'Right'];
+const saveAttemptResultOptions: SaveAttemptResult[] = ['Saved', 'Missed', 'Late Reaction'];
 
-export default function ShooterUploadScreen({ navigation }: Props) {
-  const { currentSession, setShooterUploadData } = useChallenge();
-  const [selectedCameraAngle, setSelectedCameraAngle] = useState<CameraAngle>('Front');
-  const [shotNotes, setShotNotes] = useState('');
-  const [videoSelected, setVideoSelected] = useState(false);
+export default function GoalkeeperResponseScreen({ navigation }: Props) {
+  const { currentSession, setGoalkeeperResponseData } = useChallenge();
+  const [reactionDirection, setReactionDirection] = useState<ReactionDirection>('Center');
+  const [reactionTimingNote, setReactionTimingNote] = useState('');
+  const [saveAttemptResult, setSaveAttemptResult] =
+    useState<SaveAttemptResult>('Late Reaction');
+  const [responseVideoSelected, setResponseVideoSelected] = useState(false);
   const [videoFilename, setVideoFilename] = useState('');
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
 
@@ -35,7 +43,7 @@ export default function ShooterUploadScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
-          <Text style={styles.title}>Shooter Upload</Text>
+          <Text style={styles.title}>Goalkeeper Response</Text>
           <Text style={styles.subtitle}>No challenge found. Please create a challenge first.</Text>
         </View>
       </SafeAreaView>
@@ -43,27 +51,44 @@ export default function ShooterUploadScreen({ navigation }: Props) {
   }
 
   const challenge = currentSession.challenge;
+  const shooterUploadData = currentSession.shooterUpload;
+  const existingGoalkeeperResponse = currentSession.goalkeeperResponse;
+
+  useEffect(() => {
+    if (existingGoalkeeperResponse) {
+      setReactionDirection(existingGoalkeeperResponse.reactionDirection);
+      setReactionTimingNote(existingGoalkeeperResponse.reactionTimingNote);
+      setSaveAttemptResult(existingGoalkeeperResponse.saveAttemptResult);
+      setResponseVideoSelected(existingGoalkeeperResponse.responseVideoSelected);
+      setVideoFilename(existingGoalkeeperResponse.videoFilename ?? '');
+    }
+  }, [existingGoalkeeperResponse]);
 
   const handlePickAndUploadVideo = async () => {
     try {
       setIsUploadingVideo(true);
 
       const uri = await pickVideoFromLibrary();
+      if (!uri) return;
 
-      if (!uri) {
-        return;
-      }
+      const previousPath = videoFilename;
 
       const uploaded = await uploadSessionVideoToSupabase({
         challengeId: challenge.id,
-        role: 'shooter',
+        role: 'goalkeeper',
         localUri: uri,
       });
 
-      setVideoSelected(true);
+      if (previousPath && previousPath !== uploaded.path) {
+        try {
+          await deleteSessionVideoFromSupabase(previousPath);
+        } catch {}
+      }
+
+      setResponseVideoSelected(true);
       setVideoFilename(uploaded.path);
 
-      Alert.alert('Uploaded', 'Shooter video uploaded to Supabase Storage.');
+      Alert.alert('Uploaded', 'Goalkeeper video uploaded to Supabase Storage.');
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unexpected error while uploading video.';
@@ -73,33 +98,64 @@ export default function ShooterUploadScreen({ navigation }: Props) {
     }
   };
 
+  const handleRemoveVideo = async () => {
+    if (!videoFilename) return;
+
+    Alert.alert('Remove video', 'Are you sure you want to remove this goalkeeper video?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await deleteSessionVideoFromSupabase(videoFilename);
+            setResponseVideoSelected(false);
+            setVideoFilename('');
+            Alert.alert('Removed', 'Goalkeeper video removed.');
+          } catch (error) {
+            const message =
+              error instanceof Error ? error.message : 'Unexpected error while removing video.';
+            Alert.alert('Remove failed', message);
+          }
+        },
+      },
+    ]);
+  };
+
   const handleContinue = () => {
-    if (!videoSelected || !videoFilename.trim()) {
-      Alert.alert('Missing shot video', 'Please upload the shot video before continuing.');
+    if (!responseVideoSelected || !videoFilename.trim()) {
+      Alert.alert(
+        'Missing response video',
+        'Please upload the goalkeeper response video before continuing.'
+      );
       return;
     }
 
-    const shooterData: ShooterUploadData = {
-      cameraAngle: selectedCameraAngle,
-      shotNotes: shotNotes.trim(),
-      videoSelected,
+    const goalkeeperData: GoalkeeperResponseData = {
+      reactionDirection,
+      reactionTimingNote: reactionTimingNote.trim(),
+      saveAttemptResult,
+      responseVideoSelected,
       videoFilename,
       submittedAt: new Date().toISOString(),
     };
 
-    setShooterUploadData(shooterData);
-    navigation.navigate('GoalkeeperResponse');
+    setGoalkeeperResponseData(goalkeeperData);
+    navigation.navigate('Results');
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.content}>
-          <ProgressSteps currentStep={2} />
+          <ProgressSteps currentStep={3} />
 
-          <Text style={styles.title}>Shooter Upload</Text>
+          <Text style={styles.title}>Goalkeeper Response</Text>
           <Text style={styles.subtitle}>
-            Upload the shooter video and save real media metadata for the session.
+            Upload the goalkeeper response video and save real media metadata for the session.
           </Text>
 
           <View style={styles.card}>
@@ -110,25 +166,46 @@ export default function ShooterUploadScreen({ navigation }: Props) {
             </Text>
             <Text style={styles.cardText}>Challenge: {challenge.challengeName}</Text>
             <Text style={styles.cardText}>Opponent: {challenge.opponent}</Text>
-            <Text style={styles.cardText}>Cue-hiding method: {challenge.occlusionMethod}</Text>
+            <Text style={styles.cardText}>
+              Cue-hiding method: {challenge.occlusionMethod}
+            </Text>
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Shooter Input</Text>
+          {shooterUploadData && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Shooter Metadata</Text>
+              <Text style={styles.cardText}>Camera angle: {shooterUploadData.cameraAngle}</Text>
+              <Text style={styles.cardText}>
+                Shot notes: {shooterUploadData.shotNotes || 'None provided'}
+              </Text>
+              <Text style={styles.cardText}>
+                Video uploaded: {shooterUploadData.videoSelected ? 'Yes' : 'No'}
+              </Text>
+              <Text style={styles.cardText}>
+                Video path: {shooterUploadData.videoFilename || 'None provided'}
+              </Text>
+            </View>
+          )}
 
-            <Text style={styles.label}>Camera Angle</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Goalkeeper Metadata</Text>
+
+            <Text style={styles.label}>Reaction Direction</Text>
             <View style={styles.optionRow}>
-              {cameraAngleOptions.map((option) => {
-                const isSelected = selectedCameraAngle === option;
+              {reactionDirectionOptions.map((option) => {
+                const isSelected = reactionDirection === option;
 
                 return (
                   <TouchableOpacity
                     key={option}
                     style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
-                    onPress={() => setSelectedCameraAngle(option)}
+                    onPress={() => setReactionDirection(option)}
                   >
                     <Text
-                      style={[styles.optionButtonText, isSelected && styles.optionButtonTextSelected]}
+                      style={[
+                        styles.optionButtonText,
+                        isSelected && styles.optionButtonTextSelected,
+                      ]}
                     >
                       {option}
                     </Text>
@@ -137,34 +214,69 @@ export default function ShooterUploadScreen({ navigation }: Props) {
               })}
             </View>
 
-            <Text style={styles.label}>Shot Notes</Text>
+            <Text style={styles.label}>Reaction Timing Note</Text>
             <TextInput
               style={[styles.input, styles.notesInput]}
-              placeholder="Example: right-footed shot, aiming high right"
-              value={shotNotes}
-              onChangeText={setShotNotes}
+              placeholder="Example: reacted slightly late, shifted right after ball release"
+              value={reactionTimingNote}
+              onChangeText={setReactionTimingNote}
               multiline
             />
 
-            <Text style={styles.label}>Shot Video</Text>
+            <Text style={styles.label}>Save Attempt Result</Text>
+            <View style={styles.optionRow}>
+              {saveAttemptResultOptions.map((option) => {
+                const isSelected = saveAttemptResult === option;
+
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    style={[styles.optionButton, isSelected && styles.optionButtonSelected]}
+                    onPress={() => setSaveAttemptResult(option)}
+                  >
+                    <Text
+                      style={[
+                        styles.optionButtonText,
+                        isSelected && styles.optionButtonTextSelected,
+                      ]}
+                    >
+                      {option}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <Text style={styles.label}>Response Video</Text>
             <TouchableOpacity
               style={[styles.videoButton, isUploadingVideo && styles.videoButtonDisabled]}
               onPress={handlePickAndUploadVideo}
               disabled={isUploadingVideo}
             >
               <Text style={styles.videoButtonText}>
-                {isUploadingVideo ? 'Uploading video...' : 'Pick and Upload Shooter Video'}
+                {isUploadingVideo
+                  ? 'Uploading video...'
+                  : videoFilename
+                  ? 'Replace Goalkeeper Video'
+                  : 'Pick and Upload Goalkeeper Video'}
               </Text>
             </TouchableOpacity>
 
+            {!!videoFilename && (
+              <TouchableOpacity style={styles.removeButton} onPress={handleRemoveVideo}>
+                <Text style={styles.removeButtonText}>Remove Goalkeeper Video</Text>
+              </TouchableOpacity>
+            )}
+
             <View style={styles.summaryBox}>
-              <Text style={styles.summaryTitle}>Current Shooter Metadata</Text>
-              <Text style={styles.summaryText}>Camera angle: {selectedCameraAngle}</Text>
+              <Text style={styles.summaryTitle}>Current Goalkeeper Metadata</Text>
+              <Text style={styles.summaryText}>Reaction direction: {reactionDirection}</Text>
               <Text style={styles.summaryText}>
-                Shot notes: {shotNotes.trim() ? shotNotes : 'None yet'}
+                Timing note: {reactionTimingNote.trim() ? reactionTimingNote : 'None yet'}
               </Text>
+              <Text style={styles.summaryText}>Result: {saveAttemptResult}</Text>
               <Text style={styles.summaryText}>
-                Video uploaded: {videoSelected ? 'Yes' : 'No'}
+                Video uploaded: {responseVideoSelected ? 'Yes' : 'No'}
               </Text>
               <Text style={styles.summaryText}>
                 Video path: {videoFilename || 'None yet'}
@@ -173,7 +285,7 @@ export default function ShooterUploadScreen({ navigation }: Props) {
           </View>
 
           <TouchableOpacity style={styles.button} onPress={handleContinue}>
-            <Text style={styles.buttonText}>Continue to Goalkeeper Response</Text>
+            <Text style={styles.buttonText}>Continue to Results</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -204,16 +316,28 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 14,
   },
-  optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  optionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
   optionButton: {
     backgroundColor: '#E5E7EB',
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 12,
   },
-  optionButtonSelected: { backgroundColor: '#111827' },
-  optionButtonText: { color: '#111827', fontSize: 14, fontWeight: '600' },
-  optionButtonTextSelected: { color: '#FFFFFF' },
+  optionButtonSelected: {
+    backgroundColor: '#111827',
+  },
+  optionButtonText: {
+    color: '#111827',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  optionButtonTextSelected: {
+    color: '#FFFFFF',
+  },
   input: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -221,16 +345,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D1D5DB',
   },
-  notesInput: { minHeight: 100, textAlignVertical: 'top' },
+  notesInput: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
   videoButton: {
     backgroundColor: '#DBEAFE',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
   },
-  videoButtonDisabled: { opacity: 0.6 },
+  videoButtonDisabled: {
+    opacity: 0.6,
+  },
   videoButtonText: {
     color: '#1D4ED8',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  removeButton: {
+    backgroundColor: '#FEE2E2',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  removeButtonText: {
+    color: '#B91C1C',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -248,7 +389,11 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginBottom: 8,
   },
-  summaryText: { fontSize: 14, color: '#4B5563', marginBottom: 4 },
+  summaryText: {
+    fontSize: 14,
+    color: '#4B5563',
+    marginBottom: 4,
+  },
   button: {
     backgroundColor: '#111827',
     paddingVertical: 16,
@@ -256,5 +401,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
-  buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });
