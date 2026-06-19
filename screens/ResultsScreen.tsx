@@ -1,4 +1,4 @@
-\import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Alert,
   ScrollView,
