@@ -39,6 +39,15 @@ export default function ResultsScreen({ navigation }: Props) {
   const isGoalkeeperComplete = !!goalkeeperResponse;
   const isRecordComplete = status === 'complete';
 
+  const completenessScore =
+    (challenge ? 20 : 0) +
+    (shooterUpload ? 20 : 0) +
+    (goalkeeperResponse ? 20 : 0) +
+    (analystNotes.trim() ? 10 : 0) +
+    (qualityChecklist ? 10 : 0) +
+    (shooterUpload?.videoFilename?.trim() ? 10 : 0) +
+    (goalkeeperResponse?.videoFilename?.trim() ? 10 : 0);
+
   const handleResetSession = () => {
     Alert.alert(
       'Reset current session',
@@ -85,6 +94,14 @@ export default function ResultsScreen({ navigation }: Props) {
           <Text style={styles.subtitle}>
             Example version 1 output for the challenge.
           </Text>
+
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Session Completeness Score</Text>
+            <Text style={styles.scoreValue}>{completenessScore}/100</Text>
+            <Text style={styles.scoreNote}>
+              Based on challenge data, shooter data, goalkeeper data, notes, checklist, and media placeholders.
+            </Text>
+          </View>
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Completion Status</Text>
@@ -181,6 +198,7 @@ export default function ResultsScreen({ navigation }: Props) {
             <Text style={styles.codeLine}>{'  '}challengeId: "{challenge.id}",</Text>
             <Text style={styles.codeLine}>{'  '}createdAt: "{challenge.createdAt}",</Text>
             <Text style={styles.codeLine}>{'  '}status: "{status}",</Text>
+            <Text style={styles.codeLine}>{'  '}completenessScore: {completenessScore},</Text>
             <Text style={styles.codeLine}>{'  '}analystNotes: "{analystNotes || 'None'}",</Text>
             <Text style={styles.codeLine}>
               {'  '}qualityChecklist: {'{'} cueHidingQuality: "{qualityChecklist.cueHidingQuality}", cameraSetupQuality: "{qualityChecklist.cameraSetupQuality}", reactionClarity: "{qualityChecklist.reactionClarity}" {'}'},
@@ -377,6 +395,17 @@ const styles = StyleSheet.create({
   },
   optionTextSelected: {
     color: '#FFFFFF',
+  },
+  scoreValue: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  scoreNote: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#4B5563',
   },
   actionBar: {
     marginTop: 8,
