@@ -17,6 +17,7 @@ import {
 import { analyzeSession } from '../services/analysisService';
 import { useChallenge } from '../context/ChallengeContext';
 import type { ChallengeSession, SessionStatus } from '../types/session';
+import SessionMediaThumbnail from '../components/SessionMediaThumbnail';
 
 type Props = {
   navigation: any;
@@ -110,14 +111,8 @@ export default function MySessionsScreen({ navigation }: Props) {
   }, []);
 
   const getAnalysisBadgeStyle = (verdict: string) => {
-    if (verdict === 'Strong Session') {
-      return styles.analysisBadgeStrong;
-    }
-
-    if (verdict === 'Usable With Gaps') {
-      return styles.analysisBadgeMedium;
-    }
-
+    if (verdict === 'Strong Session') return styles.analysisBadgeStrong;
+    if (verdict === 'Usable With Gaps') return styles.analysisBadgeMedium;
     return styles.analysisBadgeWeak;
   };
 
@@ -137,7 +132,6 @@ export default function MySessionsScreen({ navigation }: Props) {
       result = result.filter((session) => {
         const challengeName = session.challenge.challengeName.toLowerCase();
         const opponent = session.challenge.opponent.toLowerCase();
-
         return challengeName.includes(query) || opponent.includes(query);
       });
     }
@@ -145,7 +139,6 @@ export default function MySessionsScreen({ navigation }: Props) {
     result.sort((a, b) => {
       const timeA = new Date(a.challenge.createdAt).getTime();
       const timeB = new Date(b.challenge.createdAt).getTime();
-
       return selectedSort === 'newest' ? timeB - timeA : timeA - timeB;
     });
 
@@ -280,7 +273,6 @@ export default function MySessionsScreen({ navigation }: Props) {
             <View style={styles.filterRow}>
               {filterOptions.map((option) => {
                 const isSelected = selectedFilter === option.value;
-
                 return (
                   <TouchableOpacity
                     key={option.value}
@@ -304,7 +296,6 @@ export default function MySessionsScreen({ navigation }: Props) {
             <View style={styles.filterRow}>
               {verdictOptions.map((option) => {
                 const isSelected = selectedVerdict === option.value;
-
                 return (
                   <TouchableOpacity
                     key={option.value}
@@ -420,6 +411,24 @@ export default function MySessionsScreen({ navigation }: Props) {
                       Created: {new Date(session.challenge.createdAt).toLocaleString()}
                     </Text>
 
+                    <View style={styles.thumbnailRow}>
+                      <View style={styles.thumbnailColumn}>
+                        <Text style={styles.thumbnailLabel}>Shooter Preview</Text>
+                        <SessionMediaThumbnail
+                          path={session.shooterUpload?.videoFilename}
+                          emptyLabel="No shooter preview"
+                        />
+                      </View>
+
+                      <View style={styles.thumbnailColumn}>
+                        <Text style={styles.thumbnailLabel}>Goalkeeper Preview</Text>
+                        <SessionMediaThumbnail
+                          path={session.goalkeeperResponse?.videoFilename}
+                          emptyLabel="No goalkeeper preview"
+                        />
+                      </View>
+                    </View>
+
                     <View style={styles.analysisRow}>
                       <Text style={styles.analysisScore}>{analysis.readinessScore}/100</Text>
                       <View
@@ -521,17 +530,20 @@ export default function MySessionsScreen({ navigation }: Props) {
                 );
               })}
 
-              {hasMore && !searchText.trim() && selectedFilter === 'all' && selectedVerdict === 'all' && (
-                <TouchableOpacity
-                  style={[styles.loadMoreButton, isLoadingMore && styles.buttonDisabled]}
-                  onPress={loadMore}
-                  disabled={isLoadingMore}
-                >
-                  <Text style={styles.loadMoreButtonText}>
-                    {isLoadingMore ? 'Loading more...' : 'Load More'}
-                  </Text>
-                </TouchableOpacity>
-              )}
+              {hasMore &&
+                !searchText.trim() &&
+                selectedFilter === 'all' &&
+                selectedVerdict === 'all' && (
+                  <TouchableOpacity
+                    style={[styles.loadMoreButton, isLoadingMore && styles.buttonDisabled]}
+                    onPress={loadMore}
+                    disabled={isLoadingMore}
+                  >
+                    <Text style={styles.loadMoreButtonText}>
+                      {isLoadingMore ? 'Loading more...' : 'Load More'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
             </>
           )}
 
@@ -690,11 +702,25 @@ const styles = StyleSheet.create({
     color: '#4B5563',
     marginBottom: 4,
   },
+  thumbnailRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  thumbnailColumn: {
+    flex: 1,
+  },
+  thumbnailLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 6,
+  },
   analysisRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginTop: 10,
+    marginTop: 12,
   },
   analysisScore: {
     fontSize: 22,
