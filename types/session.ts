@@ -19,6 +19,7 @@ export type SessionQualityChecklist = {
 };
 
 export type ChallengeSession = {
+  remoteId: number | null;
   challenge: Challenge;
   shooterUpload: ShooterUploadData | null;
   goalkeeperResponse: GoalkeeperResponseData | null;

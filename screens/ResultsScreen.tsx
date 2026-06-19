@@ -21,7 +21,13 @@ type Props = {
 const ratingOptions: QualityRating[] = ['Good', 'Okay', 'Poor'];
 
 export default function ResultsScreen({ navigation }: Props) {
-  const { currentSession, resetSession, setAnalystNotes, setQualityChecklist } = useChallenge();
+  const {
+    currentSession,
+    resetSession,
+    setAnalystNotes,
+    setQualityChecklist,
+    setRemoteId,
+  } = useChallenge();
 
   if (!currentSession) {
     return (
@@ -34,8 +40,15 @@ export default function ResultsScreen({ navigation }: Props) {
     );
   }
 
-  const { challenge, shooterUpload, goalkeeperResponse, status, analystNotes, qualityChecklist } =
-    currentSession;
+  const {
+    remoteId,
+    challenge,
+    shooterUpload,
+    goalkeeperResponse,
+    status,
+    analystNotes,
+    qualityChecklist,
+  } = currentSession;
 
   const isShooterComplete = !!shooterUpload;
   const isGoalkeeperComplete = !!goalkeeperResponse;
@@ -51,6 +64,7 @@ export default function ResultsScreen({ navigation }: Props) {
     (goalkeeperResponse?.videoFilename?.trim() ? 10 : 0);
 
   const exportPayload = {
+    remoteId,
     challenge,
     status,
     completenessScore,
@@ -66,27 +80,55 @@ export default function ResultsScreen({ navigation }: Props) {
     try {
       await Clipboard.setStringAsync(exportJson);
       Alert.alert('Copied', 'Session JSON copied to clipboard.');
-    } catch (error) {
+    } catch {
       Alert.alert('Copy failed', 'Unable to copy JSON right now.');
     }
   };
 
   const handleSaveToSupabase = async () => {
     try {
-      const { error } = await supabase.from('sessions').insert({
-        challenge_id: challenge.id,
-        session_status: status,
-        completeness_score: completenessScore,
-        payload: exportPayload,
-      });
+      if (!remoteId) {
+        const { data, error } = await supabase
+          .from('sessions')
+          .insert({
+            challenge_id: challenge.id,
+            session_status: status,
+            completeness_score: completenessScore,
+            payload: exportPayload,
+          })
+          .select('id')
+          .single();
 
-      if (error) {
-        Alert.alert('Save failed', error.message);
+        if (error) {
+          Alert.alert('Save failed', error.message);
+          return;
+        }
+
+        if (data?.id) {
+          setRemoteId(data.id);
+        }
+
+        Alert.alert('Saved', 'New session saved to Supabase.');
         return;
       }
 
-      Alert.alert('Saved', 'Session saved to Supabase.');
-    } catch (error) {
+      const { error } = await supabase
+        .from('sessions')
+        .update({
+          challenge_id: challenge.id,
+          session_status: status,
+          completeness_score: completenessScore,
+          payload: exportPayload,
+        })
+        .eq('id', remoteId);
+
+      if (error) {
+        Alert.alert('Update failed', error.message);
+        return;
+      }
+
+      Alert.alert('Updated', 'Existing session updated in Supabase.');
+    } catch {
       Alert.alert('Save failed', 'Unexpected error while saving session.');
     }
   };
@@ -134,15 +176,16 @@ export default function ResultsScreen({ navigation }: Props) {
           <ProgressSteps currentStep={4} />
 
           <Text style={styles.title}>Results</Text>
-          <Text style={styles.subtitle}>
-            Example version 1 output for the challenge.
-          </Text>
+          <Text style={styles.subtitle}>Example version 1 output for the challenge.</Text>
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Session Completeness Score</Text>
             <Text style={styles.scoreValue}>{completenessScore}/100</Text>
             <Text style={styles.scoreNote}>
               Based on challenge data, shooter data, goalkeeper data, notes, checklist, and media placeholders.
+            </Text>
+            <Text style={styles.remoteIdText}>
+              Remote ID: {remoteId ?? 'Not saved yet'}
             </Text>
           </View>
 
@@ -158,8 +201,7 @@ export default function ResultsScreen({ navigation }: Props) {
               <Text style={styles.label}>Shooter Submitted:</Text> {isShooterComplete ? 'Yes' : 'No'}
             </Text>
             <Text style={styles.row}>
-              <Text style={styles.label}>Goalkeeper Submitted:</Text>{' '}
-              {isGoalkeeperComplete ? 'Yes' : 'No'}
+              <Text style={styles.label}>Goalkeeper Submitted:</Text> {isGoalkeeperComplete ? 'Yes' : 'No'}
             </Text>
             <Text style={styles.row}>
               <Text style={styles.label}>Record Complete:</Text> {isRecordComplete ? 'Yes' : 'No'}
@@ -249,91 +291,10 @@ export default function ResultsScreen({ navigation }: Props) {
           </View>
 
           <TouchableOpacity style={styles.saveButton} onPress={handleSaveToSupabase}>
-            <Text style={styles.saveButtonText}>Save to Supabase</Text>
+            <Text style={styles.saveButtonText}>
+              {remoteId ? 'Update in Supabase' : 'Save to Supabase'}
+            </Text>
           </TouchableOpacity>
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Challenge Summary</Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Challenge ID:</Text> {challenge.id}
-            </Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Created At:</Text> {new Date(challenge.createdAt).toLocaleString()}
-            </Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Challenge:</Text> {challenge.challengeName}
-            </Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Opponent:</Text> {challenge.opponent}
-            </Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Cue-hiding method:</Text> {challenge.occlusionMethod}
-            </Text>
-          </View>
-
-          {shooterUpload && (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Shooter Upload Summary</Text>
-              <Text style={styles.row}>
-                <Text style={styles.label}>Submitted At:</Text> {new Date(shooterUpload.submittedAt).toLocaleString()}
-              </Text>
-              <Text style={styles.row}>
-                <Text style={styles.label}>Camera Angle:</Text> {shooterUpload.cameraAngle}
-              </Text>
-              <Text style={styles.row}>
-                <Text style={styles.label}>Shot Notes:</Text> {shooterUpload.shotNotes || 'None provided'}
-              </Text>
-              <Text style={styles.row}>
-                <Text style={styles.label}>Video Selected:</Text> {shooterUpload.videoSelected ? 'Yes' : 'No'}
-              </Text>
-              <Text style={styles.row}>
-                <Text style={styles.label}>Video Filename:</Text> {shooterUpload.videoFilename}
-              </Text>
-            </View>
-          )}
-
-          {goalkeeperResponse && (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Goalkeeper Response Summary</Text>
-              <Text style={styles.row}>
-                <Text style={styles.label}>Submitted At:</Text> {new Date(goalkeeperResponse.submittedAt).toLocaleString()}
-              </Text>
-              <Text style={styles.row}>
-                <Text style={styles.label}>Reaction Direction:</Text> {goalkeeperResponse.reactionDirection}
-              </Text>
-              <Text style={styles.row}>
-                <Text style={styles.label}>Timing Note:</Text> {goalkeeperResponse.reactionTimingNote || 'None provided'}
-              </Text>
-              <Text style={styles.row}>
-                <Text style={styles.label}>Save Result:</Text> {goalkeeperResponse.saveAttemptResult}
-              </Text>
-              <Text style={styles.row}>
-                <Text style={styles.label}>Response Video Selected:</Text> {goalkeeperResponse.responseVideoSelected ? 'Yes' : 'No'}
-              </Text>
-              <Text style={styles.row}>
-                <Text style={styles.label}>Video Filename:</Text> {goalkeeperResponse.videoFilename}
-              </Text>
-            </View>
-          )}
-
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Sample Output</Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Shot Direction:</Text> Top right
-            </Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Shot Height:</Text> High
-            </Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Reaction Side:</Text> Right
-            </Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Reaction Time:</Text> 0.41s
-            </Text>
-            <Text style={styles.row}>
-              <Text style={styles.label}>Outcome:</Text> Late save attempt
-            </Text>
-          </View>
 
           <View style={styles.actionBar}>
             <TouchableOpacity style={styles.actionButtonSecondary} onPress={handleGoHome}>
@@ -420,6 +381,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: '#4B5563',
+    marginBottom: 8,
+  },
+  remoteIdText: {
+    fontSize: 14,
+    color: '#2563EB',
+    fontWeight: '600',
   },
   jsonHeader: {
     flexDirection: 'row',

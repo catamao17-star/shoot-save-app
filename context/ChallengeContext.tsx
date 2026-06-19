@@ -14,6 +14,7 @@ type ChallengeContextType = {
   setGoalkeeperResponseData: (data: GoalkeeperResponseData | null) => void;
   setAnalystNotes: (notes: string) => void;
   setQualityChecklist: (checklist: SessionQualityChecklist) => void;
+  setRemoteId: (remoteId: number) => void;
   setSessionHistory: (sessions: ChallengeSession[]) => void;
   loadSessionFromHistory: (sessionId: string) => void;
   loadSessionObject: (session: ChallengeSession) => void;
@@ -79,6 +80,7 @@ export function ChallengeProvider({ children }: Props) {
 
   const createSession = (challenge: Challenge) => {
     setCurrentSession({
+      remoteId: null,
       challenge,
       shooterUpload: null,
       goalkeeperResponse: null,
@@ -171,6 +173,22 @@ export function ChallengeProvider({ children }: Props) {
     });
   };
 
+  const setRemoteId = (remoteId: number) => {
+    setCurrentSession((prev) => {
+      if (!prev) return prev;
+      const updatedSession = { ...prev, remoteId };
+
+      setSessionHistoryState((history) => {
+        const withoutCurrent = history.filter(
+          (session) => session.challenge.id !== updatedSession.challenge.id
+        );
+        return [updatedSession, ...withoutCurrent];
+      });
+
+      return updatedSession;
+    });
+  };
+
   const setSessionHistory = (sessions: ChallengeSession[]) => {
     setSessionHistoryState(sessions);
   };
@@ -199,6 +217,7 @@ export function ChallengeProvider({ children }: Props) {
       setGoalkeeperResponseData,
       setAnalystNotes,
       setQualityChecklist,
+      setRemoteId,
       setSessionHistory,
       loadSessionFromHistory,
       loadSessionObject,
