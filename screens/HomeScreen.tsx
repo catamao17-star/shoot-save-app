@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -50,7 +50,7 @@ export default function HomeScreen({ navigation }: Props) {
       setIsSyncing(true);
       setSyncError(null);
 
-      const parsedSessions = await fetchSessionsFromSupabase(5);
+      const parsedSessions = await fetchSessionsFromSupabase(25);
 
       setSessionHistory(parsedSessions);
 
@@ -78,6 +78,38 @@ export default function HomeScreen({ navigation }: Props) {
     fetchCurrentUser();
     fetchBackendSessions(false);
   }, []);
+
+  const dashboardStats = useMemo(() => {
+    const total = sessionHistory.length;
+    const complete = sessionHistory.filter((session) => session.status === 'complete').length;
+    const created = sessionHistory.filter((session) => session.status === 'created').length;
+    const shooterSubmitted = sessionHistory.filter(
+      (session) => session.status === 'shooter_submitted'
+    ).length;
+    const goalkeeperSubmitted = sessionHistory.filter(
+      (session) => session.status === 'goalkeeper_submitted'
+    ).length;
+
+    const completionRate = total > 0 ? Math.round((complete / total) * 100) : 0;
+
+    const latestSession =
+      sessionHistory.length > 0
+        ? [...sessionHistory].sort(
+            (a, b) =>
+              new Date(b.challenge.createdAt).getTime() - new Date(a.challenge.createdAt).getTime()
+          )[0]
+        : null;
+
+    return {
+      total,
+      complete,
+      created,
+      shooterSubmitted,
+      goalkeeperSubmitted,
+      completionRate,
+      latestSession,
+    };
+  }, [sessionHistory]);
 
   const handleSignOut = async () => {
     try {
@@ -170,6 +202,59 @@ export default function HomeScreen({ navigation }: Props) {
                 {isSigningOut ? 'Signing out...' : 'Sign Out'}
               </Text>
             </TouchableOpacity>
+          </View>
+
+          <View style={styles.statsCard}>
+            <Text style={styles.statsTitle}>Session Dashboard</Text>
+
+            <View style={styles.statsGrid}>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{dashboardStats.total}</Text>
+                <Text style={styles.statLabel}>Total Sessions</Text>
+              </View>
+
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{dashboardStats.complete}</Text>
+                <Text style={styles.statLabel}>Complete</Text>
+              </View>
+
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{dashboardStats.completionRate}%</Text>
+                <Text style={styles.statLabel}>Completion Rate</Text>
+              </View>
+
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{dashboardStats.created}</Text>
+                <Text style={styles.statLabel}>Created Only</Text>
+              </View>
+
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{dashboardStats.shooterSubmitted}</Text>
+                <Text style={styles.statLabel}>Shooter Done</Text>
+              </View>
+
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{dashboardStats.goalkeeperSubmitted}</Text>
+                <Text style={styles.statLabel}>Goalkeeper Done</Text>
+              </View>
+            </View>
+
+            <View style={styles.latestBox}>
+              <Text style={styles.latestTitle}>Latest Challenge</Text>
+              <Text style={styles.latestText}>
+                {dashboardStats.latestSession
+                  ? dashboardStats.latestSession.challenge.challengeName
+                  : 'No sessions yet'}
+              </Text>
+              {dashboardStats.latestSession && (
+                <Text style={styles.latestSubtext}>
+                  {dashboardStats.latestSession.challenge.opponent} ·{' '}
+                  {new Date(
+                    dashboardStats.latestSession.challenge.createdAt
+                  ).toLocaleString()}
+                </Text>
+              )}
+            </View>
           </View>
 
           <View style={styles.card}>
@@ -337,6 +422,67 @@ const styles = StyleSheet.create({
     color: '#B91C1C',
     fontSize: 15,
     fontWeight: '700',
+  },
+  statsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  statsTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 14,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 16,
+  },
+  statBox: {
+    width: '47%',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  latestBox: {
+    backgroundColor: '#F9FAFB',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  latestTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 6,
+  },
+  latestText: {
+    fontSize: 15,
+    color: '#111827',
+    marginBottom: 4,
+  },
+  latestSubtext: {
+    fontSize: 13,
+    color: '#6B7280',
   },
   card: {
     backgroundColor: '#FFFFFF',
