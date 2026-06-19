@@ -1,4 +1,4 @@
-import { SafeAreaView } from 'react-native-safe-area-context';
+\import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Alert,
   ScrollView,
@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { supabase } from '../lib/supabase';
 import { useChallenge } from '../context/ChallengeContext';
 import ProgressSteps from '../components/ProgressSteps';
 import type { QualityRating } from '../types/session';
@@ -67,6 +68,26 @@ export default function ResultsScreen({ navigation }: Props) {
       Alert.alert('Copied', 'Session JSON copied to clipboard.');
     } catch (error) {
       Alert.alert('Copy failed', 'Unable to copy JSON right now.');
+    }
+  };
+
+  const handleSaveToSupabase = async () => {
+    try {
+      const { error } = await supabase.from('sessions').insert({
+        challenge_id: challenge.id,
+        session_status: status,
+        completeness_score: completenessScore,
+        payload: exportPayload,
+      });
+
+      if (error) {
+        Alert.alert('Save failed', error.message);
+        return;
+      }
+
+      Alert.alert('Saved', 'Session saved to Supabase.');
+    } catch (error) {
+      Alert.alert('Save failed', 'Unexpected error while saving session.');
     }
   };
 
@@ -226,6 +247,10 @@ export default function ResultsScreen({ navigation }: Props) {
               <Text style={styles.jsonText}>{exportJson}</Text>
             </ScrollView>
           </View>
+
+          <TouchableOpacity style={styles.saveButton} onPress={handleSaveToSupabase}>
+            <Text style={styles.saveButtonText}>Save to Supabase</Text>
+          </TouchableOpacity>
 
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Challenge Summary</Text>
@@ -417,6 +442,20 @@ const styles = StyleSheet.create({
   copyButtonText: {
     color: '#FFFFFF',
     fontSize: 13,
+    fontWeight: '700',
+  },
+  saveButton: {
+    backgroundColor: '#DCFCE7',
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  saveButtonText: {
+    color: '#166534',
+    fontSize: 16,
     fontWeight: '700',
   },
   actionBar: {
