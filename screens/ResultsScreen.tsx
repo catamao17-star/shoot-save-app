@@ -143,18 +143,25 @@ export default function ResultsScreen({ navigation }: Props) {
       setIsSyncing(true);
       setSyncError(null);
 
-      const result = await saveSessionToSupabase(currentSession, completenessScore);
+      const result = await saveSessionToSupabase(
+        {
+          ...currentSession,
+          analystNotes,
+          qualityChecklist,
+        },
+        completenessScore
+      );
 
       if (!remoteId && result.remoteId) {
         setRemoteId(result.remoteId);
       }
 
       if (result.mode === 'inserted') {
-        Alert.alert('Saved', 'New session saved to Supabase.');
+        Alert.alert('Saved', 'New session with analysis saved to Supabase.');
         return;
       }
 
-      Alert.alert('Updated', 'Existing session updated in Supabase.');
+      Alert.alert('Updated', 'Existing session with analysis updated in Supabase.');
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unexpected error while saving session.';
@@ -223,9 +230,7 @@ export default function ResultsScreen({ navigation }: Props) {
             <Text style={styles.scoreNote}>
               Based on challenge data, shooter data, goalkeeper data, notes, checklist, and media.
             </Text>
-            <Text style={styles.remoteIdText}>
-              Remote ID: {remoteId ?? 'Not saved yet'}
-            </Text>
+            <Text style={styles.remoteIdText}>Remote ID: {remoteId ?? 'Not saved yet'}</Text>
           </View>
 
           <View style={styles.analysisCard}>
@@ -396,11 +401,7 @@ export default function ResultsScreen({ navigation }: Props) {
             disabled={isSyncing}
           >
             <Text style={styles.saveButtonText}>
-              {isSyncing
-                ? 'Syncing...'
-                : remoteId
-                ? 'Update in Supabase'
-                : 'Save to Supabase'}
+              {isSyncing ? 'Syncing...' : remoteId ? 'Update in Supabase' : 'Save to Supabase'}
             </Text>
           </TouchableOpacity>
 

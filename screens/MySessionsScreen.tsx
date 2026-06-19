@@ -14,6 +14,7 @@ import {
   deleteSessionFromSupabase,
   fetchPagedSessionsFromSupabase,
 } from '../services/sessionService';
+import { analyzeSession } from '../services/analysisService';
 import { useChallenge } from '../context/ChallengeContext';
 import type { ChallengeSession, SessionStatus } from '../types/session';
 
@@ -239,9 +240,7 @@ export default function MySessionsScreen({ navigation }: Props) {
       >
         <View style={styles.content}>
           <Text style={styles.title}>My Sessions</Text>
-          <Text style={styles.subtitle}>
-            Sessions loaded from your Supabase account.
-          </Text>
+          <Text style={styles.subtitle}>Sessions loaded from your Supabase account.</Text>
 
           <View style={styles.controlCard}>
             <Text style={styles.controlTitle}>Search</Text>
@@ -348,6 +347,7 @@ export default function MySessionsScreen({ navigation }: Props) {
 
                 const hasShooterVideo = !!session.shooterUpload?.videoFilename;
                 const hasGoalkeeperVideo = !!session.goalkeeperResponse?.videoFilename;
+                const analysis = analyzeSession(session);
 
                 return (
                   <View
@@ -370,6 +370,11 @@ export default function MySessionsScreen({ navigation }: Props) {
                     <Text style={styles.sessionText}>
                       Created: {new Date(session.challenge.createdAt).toLocaleString()}
                     </Text>
+
+                    <View style={styles.analysisRow}>
+                      <Text style={styles.analysisScore}>{analysis.readinessScore}/100</Text>
+                      <Text style={styles.analysisVerdict}>{analysis.verdict}</Text>
+                    </View>
 
                     <View style={styles.mediaBadgeRow}>
                       <View
@@ -474,10 +479,7 @@ export default function MySessionsScreen({ navigation }: Props) {
             </>
           )}
 
-          <TouchableOpacity
-            style={styles.homeButton}
-            onPress={() => navigation.navigate('Home')}
-          >
+          <TouchableOpacity style={styles.homeButton} onPress={() => navigation.navigate('Home')}>
             <Text style={styles.homeButtonText}>Back to Home</Text>
           </TouchableOpacity>
         </View>
@@ -631,6 +633,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4B5563',
     marginBottom: 4,
+  },
+  analysisRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 10,
+  },
+  analysisScore: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#1D4ED8',
+  },
+  analysisVerdict: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E3A8A',
   },
   mediaBadgeRow: {
     flexDirection: 'row',
