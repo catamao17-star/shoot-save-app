@@ -1,4 +1,3 @@
-// screens/MySessionsScreen.tsx
 import { useEffect, useState } from 'react';
 import {
   Alert,
@@ -58,6 +57,22 @@ export default function MySessionsScreen({ navigation }: Props) {
 
   const handleOpenSession = (session: ChallengeSession) => {
     loadSessionObject(session);
+    navigation.navigate('Results');
+  };
+
+  const handleEditSession = (session: ChallengeSession) => {
+    loadSessionObject(session);
+
+    if (session.status === 'created') {
+      navigation.navigate('ShooterUpload');
+      return;
+    }
+
+    if (session.status === 'shooter_submitted') {
+      navigation.navigate('GoalkeeperResponse');
+      return;
+    }
+
     navigation.navigate('Results');
   };
 
@@ -140,23 +155,40 @@ export default function MySessionsScreen({ navigation }: Props) {
           ) : (
             sessions.map((session) => {
               const isDeleting = deletingRemoteId === session.remoteId;
+              const editLabel =
+                session.status === 'created'
+                  ? 'Continue Shooter Step'
+                  : session.status === 'shooter_submitted'
+                  ? 'Continue Goalkeeper Step'
+                  : 'Open Final Results';
 
               return (
                 <View
                   key={`${session.remoteId ?? session.challenge.id}`}
                   style={styles.sessionCard}
                 >
-                  <TouchableOpacity onPress={() => handleOpenSession(session)}>
-                    <Text style={styles.sessionTitle}>{session.challenge.challengeName}</Text>
-                    <Text style={styles.sessionText}>Opponent: {session.challenge.opponent}</Text>
-                    <Text style={styles.sessionText}>Status: {session.status}</Text>
-                    <Text style={styles.sessionText}>
-                      Remote ID: {session.remoteId ?? 'Not synced'}
-                    </Text>
-                    <Text style={styles.sessionText}>
-                      Created: {new Date(session.challenge.createdAt).toLocaleString()}
-                    </Text>
-                    <Text style={styles.openText}>Tap to open session</Text>
+                  <Text style={styles.sessionTitle}>{session.challenge.challengeName}</Text>
+                  <Text style={styles.sessionText}>Opponent: {session.challenge.opponent}</Text>
+                  <Text style={styles.sessionText}>Status: {session.status}</Text>
+                  <Text style={styles.sessionText}>
+                    Remote ID: {session.remoteId ?? 'Not synced'}
+                  </Text>
+                  <Text style={styles.sessionText}>
+                    Created: {new Date(session.challenge.createdAt).toLocaleString()}
+                  </Text>
+
+                  <TouchableOpacity
+                    style={styles.openButton}
+                    onPress={() => handleOpenSession(session)}
+                  >
+                    <Text style={styles.openButtonText}>Open in Results</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={() => handleEditSession(session)}
+                  >
+                    <Text style={styles.editButtonText}>{editLabel}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -241,18 +273,36 @@ const styles = StyleSheet.create({
     color: '#4B5563',
     marginBottom: 4,
   },
-  openText: {
-    marginTop: 8,
-    fontSize: 13,
+  openButton: {
+    backgroundColor: '#E5E7EB',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 14,
+  },
+  openButtonText: {
+    color: '#111827',
+    fontSize: 15,
     fontWeight: '700',
-    color: '#2563EB',
+  },
+  editButton: {
+    backgroundColor: '#DBEAFE',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  editButtonText: {
+    color: '#1D4ED8',
+    fontSize: 15,
+    fontWeight: '700',
   },
   deleteButton: {
     backgroundColor: '#FEE2E2',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 14,
+    marginTop: 12,
   },
   deleteButtonText: {
     color: '#B91C1C',
