@@ -24,6 +24,7 @@ type Props = {
 
 type FilterOption = 'all' | SessionStatus;
 type SortOption = 'newest' | 'oldest';
+type VerdictFilter = 'all' | 'Strong Session' | 'Usable With Gaps' | 'Weak Session';
 
 const PAGE_SIZE = 10;
 
@@ -33,6 +34,13 @@ const filterOptions: { label: string; value: FilterOption }[] = [
   { label: 'Shooter', value: 'shooter_submitted' },
   { label: 'Goalkeeper', value: 'goalkeeper_submitted' },
   { label: 'Complete', value: 'complete' },
+];
+
+const verdictOptions: { label: string; value: VerdictFilter }[] = [
+  { label: 'All', value: 'all' },
+  { label: 'Strong', value: 'Strong Session' },
+  { label: 'Usable', value: 'Usable With Gaps' },
+  { label: 'Weak', value: 'Weak Session' },
 ];
 
 export default function MySessionsScreen({ navigation }: Props) {
@@ -46,6 +54,7 @@ export default function MySessionsScreen({ navigation }: Props) {
   const [deletingRemoteId, setDeletingRemoteId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState<FilterOption>('all');
+  const [selectedVerdict, setSelectedVerdict] = useState<VerdictFilter>('all');
   const [selectedSort, setSelectedSort] = useState<SortOption>('newest');
   const [searchText, setSearchText] = useState('');
 
@@ -100,12 +109,28 @@ export default function MySessionsScreen({ navigation }: Props) {
     loadFirstPage(false);
   }, []);
 
+  const getAnalysisBadgeStyle = (verdict: string) => {
+    if (verdict === 'Strong Session') {
+      return styles.analysisBadgeStrong;
+    }
+
+    if (verdict === 'Usable With Gaps') {
+      return styles.analysisBadgeMedium;
+    }
+
+    return styles.analysisBadgeWeak;
+  };
+
   const visibleSessions = useMemo(() => {
     let result = [...sessions];
     const query = searchText.trim().toLowerCase();
 
     if (selectedFilter !== 'all') {
       result = result.filter((session) => session.status === selectedFilter);
+    }
+
+    if (selectedVerdict !== 'all') {
+      result = result.filter((session) => analyzeSession(session).verdict === selectedVerdict);
     }
 
     if (query) {
@@ -125,7 +150,7 @@ export default function MySessionsScreen({ navigation }: Props) {
     });
 
     return result;
-  }, [sessions, selectedFilter, selectedSort, searchText]);
+  }, [sessions, selectedFilter, selectedVerdict, selectedSort, searchText]);
 
   const handleOpenSession = (session: ChallengeSession) => {
     loadSessionObject(session);
@@ -275,6 +300,30 @@ export default function MySessionsScreen({ navigation }: Props) {
               })}
             </View>
 
+            <Text style={styles.controlTitle}>Filter by Analysis</Text>
+            <View style={styles.filterRow}>
+              {verdictOptions.map((option) => {
+                const isSelected = selectedVerdict === option.value;
+
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[styles.filterButton, isSelected && styles.filterButtonSelected]}
+                    onPress={() => setSelectedVerdict(option.value)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterButtonText,
+                        isSelected && styles.filterButtonTextSelected,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             <Text style={styles.controlTitle}>Sort by Date</Text>
             <View style={styles.sortRow}>
               <TouchableOpacity
@@ -373,7 +422,14 @@ export default function MySessionsScreen({ navigation }: Props) {
 
                     <View style={styles.analysisRow}>
                       <Text style={styles.analysisScore}>{analysis.readinessScore}/100</Text>
-                      <Text style={styles.analysisVerdict}>{analysis.verdict}</Text>
+                      <View
+                        style={[
+                          styles.analysisBadge,
+                          getAnalysisBadgeStyle(analysis.verdict),
+                        ]}
+                      >
+                        <Text style={styles.analysisBadgeText}>{analysis.verdict}</Text>
+                      </View>
                     </View>
 
                     <View style={styles.mediaBadgeRow}>
@@ -465,7 +521,7 @@ export default function MySessionsScreen({ navigation }: Props) {
                 );
               })}
 
-              {hasMore && !searchText.trim() && selectedFilter === 'all' && (
+              {hasMore && !searchText.trim() && selectedFilter === 'all' && selectedVerdict === 'all' && (
                 <TouchableOpacity
                   style={[styles.loadMoreButton, isLoadingMore && styles.buttonDisabled]}
                   onPress={loadMore}
@@ -645,10 +701,24 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#1D4ED8',
   },
-  analysisVerdict: {
-    fontSize: 14,
+  analysisBadge: {
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+  },
+  analysisBadgeStrong: {
+    backgroundColor: '#DCFCE7',
+  },
+  analysisBadgeMedium: {
+    backgroundColor: '#FEF3C7',
+  },
+  analysisBadgeWeak: {
+    backgroundColor: '#FEE2E2',
+  },
+  analysisBadgeText: {
+    fontSize: 12,
     fontWeight: '700',
-    color: '#1E3A8A',
+    color: '#111827',
   },
   mediaBadgeRow: {
     flexDirection: 'row',
