@@ -14,6 +14,10 @@ import type { RootStackParamList } from '../App';
 import { useChallenge } from '../context/ChallengeContext';
 import type { CameraAngle, ShooterUploadData } from '../types/challenge';
 import ProgressSteps from '../components/ProgressSteps';
+import {
+  pickVideoFromLibrary,
+  uploadSessionVideoToSupabase,
+} from '../services/storageService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ShooterUpload'>;
 
@@ -24,38 +28,63 @@ export default function ShooterUploadScreen({ navigation }: Props) {
   const [selectedCameraAngle, setSelectedCameraAngle] = useState<CameraAngle>('Front');
   const [shotNotes, setShotNotes] = useState('');
   const [videoSelected, setVideoSelected] = useState(false);
-  const [videoFilename, setVideoFilename] = useState('shooter-shot-demo.mp4');
+  const [videoFilename, setVideoFilename] = useState('');
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
 
   if (!currentSession) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
           <Text style={styles.title}>Shooter Upload</Text>
-          <Text style={styles.subtitle}>No session found. Please create a challenge first.</Text>
+          <Text style={styles.subtitle}>No challenge found. Please create a challenge first.</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const { challenge } = currentSession;
+  const challenge = currentSession.challenge;
+
+  const handlePickAndUploadVideo = async () => {
+    try {
+      setIsUploadingVideo(true);
+
+      const uri = await pickVideoFromLibrary();
+
+      if (!uri) {
+        return;
+      }
+
+      const uploaded = await uploadSessionVideoToSupabase({
+        challengeId: challenge.id,
+        role: 'shooter',
+        localUri: uri,
+      });
+
+      setVideoSelected(true);
+      setVideoFilename(uploaded.path);
+
+      Alert.alert('Uploaded', 'Shooter video uploaded to Supabase Storage.');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unexpected error while uploading video.';
+      Alert.alert('Upload failed', message);
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  };
 
   const handleContinue = () => {
-    if (!videoSelected) {
-      Alert.alert('Missing shot video', 'Please mark the shot video as selected before continuing.');
-      return;
-    }
-
-    if (!videoFilename.trim()) {
-      Alert.alert('Missing filename', 'Please add a mock video filename before continuing.');
+    if (!videoSelected || !videoFilename.trim()) {
+      Alert.alert('Missing shot video', 'Please upload the shot video before continuing.');
       return;
     }
 
     const shooterData: ShooterUploadData = {
-      submittedAt: new Date().toISOString(),
       cameraAngle: selectedCameraAngle,
       shotNotes: shotNotes.trim(),
       videoSelected,
-      videoFilename: videoFilename.trim(),
+      videoFilename,
+      submittedAt: new Date().toISOString(),
     };
 
     setShooterUploadData(shooterData);
@@ -70,7 +99,7 @@ export default function ShooterUploadScreen({ navigation }: Props) {
 
           <Text style={styles.title}>Shooter Upload</Text>
           <Text style={styles.subtitle}>
-            This screen represents where the shooter records or uploads the shot and captures basic metadata for version 1.
+            Upload the shooter video and save real media metadata for the session.
           </Text>
 
           <View style={styles.card}>
@@ -111,32 +140,20 @@ export default function ShooterUploadScreen({ navigation }: Props) {
             <Text style={styles.label}>Shot Notes</Text>
             <TextInput
               style={[styles.input, styles.notesInput]}
-              placeholder="Example: right-footed shot, hidden by black curtain, aiming high right"
+              placeholder="Example: right-footed shot, aiming high right"
               value={shotNotes}
               onChangeText={setShotNotes}
               multiline
             />
 
-            <Text style={styles.label}>Mock Video Filename</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="shooter-shot-demo.mp4"
-              value={videoFilename}
-              onChangeText={setVideoFilename}
-            />
-
             <Text style={styles.label}>Shot Video</Text>
             <TouchableOpacity
-              style={[styles.videoButton, videoSelected && styles.videoButtonSelected]}
-              onPress={() => setVideoSelected((prev) => !prev)}
+              style={[styles.videoButton, isUploadingVideo && styles.videoButtonDisabled]}
+              onPress={handlePickAndUploadVideo}
+              disabled={isUploadingVideo}
             >
-              <Text
-                style={[
-                  styles.videoButtonText,
-                  videoSelected && styles.videoButtonTextSelected,
-                ]}
-              >
-                {videoSelected ? 'Shot Video Selected' : 'Mark Shot Video as Selected'}
+              <Text style={styles.videoButtonText}>
+                {isUploadingVideo ? 'Uploading video...' : 'Pick and Upload Shooter Video'}
               </Text>
             </TouchableOpacity>
 
@@ -146,9 +163,11 @@ export default function ShooterUploadScreen({ navigation }: Props) {
               <Text style={styles.summaryText}>
                 Shot notes: {shotNotes.trim() ? shotNotes : 'None yet'}
               </Text>
-              <Text style={styles.summaryText}>Video filename: {videoFilename.trim() || 'None yet'}</Text>
               <Text style={styles.summaryText}>
-                Video selected: {videoSelected ? 'Yes' : 'No'}
+                Video uploaded: {videoSelected ? 'Yes' : 'No'}
+              </Text>
+              <Text style={styles.summaryText}>
+                Video path: {videoFilename || 'None yet'}
               </Text>
             </View>
           </View>
@@ -178,7 +197,13 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 },
   cardText: { fontSize: 15, color: '#4B5563', marginBottom: 6 },
-  label: { fontSize: 14, fontWeight: '700', color: '#374151', marginBottom: 8, marginTop: 14 },
+  label: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 8,
+    marginTop: 14,
+  },
   optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   optionButton: {
     backgroundColor: '#E5E7EB',
@@ -198,18 +223,17 @@ const styles = StyleSheet.create({
   },
   notesInput: { minHeight: 100, textAlignVertical: 'top' },
   videoButton: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#DBEAFE',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
   },
-  videoButtonSelected: {
-    backgroundColor: '#DCFCE7',
-    borderWidth: 1,
-    borderColor: '#86EFAC',
+  videoButtonDisabled: { opacity: 0.6 },
+  videoButtonText: {
+    color: '#1D4ED8',
+    fontSize: 15,
+    fontWeight: '700',
   },
-  videoButtonText: { color: '#111827', fontSize: 15, fontWeight: '700' },
-  videoButtonTextSelected: { color: '#166534' },
   summaryBox: {
     backgroundColor: '#F9FAFB',
     borderRadius: 14,
@@ -218,7 +242,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  summaryTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 8 },
+  summaryTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
+  },
   summaryText: { fontSize: 14, color: '#4B5563', marginBottom: 4 },
   button: {
     backgroundColor: '#111827',
