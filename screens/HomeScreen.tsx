@@ -4,6 +4,7 @@ import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { fetchSessionsFromSupabase } from '../services/sessionService';
+import { analyzeSession } from '../services/analysisService';
 import { useChallenge } from '../context/ChallengeContext';
 
 type Props = {
@@ -79,6 +80,18 @@ export default function HomeScreen({ navigation }: Props) {
     fetchBackendSessions(false);
   }, []);
 
+  const getAnalysisBadgeStyle = (verdict: string) => {
+    if (verdict === 'Strong Session') {
+      return styles.analysisBadgeStrong;
+    }
+
+    if (verdict === 'Usable With Gaps') {
+      return styles.analysisBadgeMedium;
+    }
+
+    return styles.analysisBadgeWeak;
+  };
+
   const dashboardStats = useMemo(() => {
     const total = sessionHistory.length;
     const complete = sessionHistory.filter((session) => session.status === 'complete').length;
@@ -106,6 +119,8 @@ export default function HomeScreen({ navigation }: Props) {
           )[0]
         : null;
 
+    const latestAnalysis = latestSession ? analyzeSession(latestSession) : null;
+
     return {
       total,
       complete,
@@ -116,6 +131,7 @@ export default function HomeScreen({ navigation }: Props) {
       goalkeeperMediaAttached,
       completionRate,
       latestSession,
+      latestAnalysis,
     };
   }, [sessionHistory]);
 
@@ -189,6 +205,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   const shooterMediaReady = !!shooterUpload?.videoFilename;
   const goalkeeperMediaReady = !!goalkeeperResponse?.videoFilename;
+  const currentAnalysis = currentSession ? analyzeSession(currentSession) : null;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -275,6 +292,21 @@ export default function HomeScreen({ navigation }: Props) {
                       dashboardStats.latestSession.challenge.createdAt
                     ).toLocaleString()}
                   </Text>
+
+                  {dashboardStats.latestAnalysis && (
+                    <View
+                      style={[
+                        styles.analysisBadge,
+                        getAnalysisBadgeStyle(dashboardStats.latestAnalysis.verdict),
+                      ]}
+                    >
+                      <Text style={styles.analysisBadgeText}>
+                        {dashboardStats.latestAnalysis.verdict} ·{' '}
+                        {dashboardStats.latestAnalysis.readinessScore}/100
+                      </Text>
+                    </View>
+                  )}
+
                   <View style={styles.mediaBadgeRow}>
                     <View
                       style={[
@@ -285,7 +317,10 @@ export default function HomeScreen({ navigation }: Props) {
                       ]}
                     >
                       <Text style={styles.mediaBadgeText}>
-                        Shooter {dashboardStats.latestSession.shooterUpload?.videoFilename ? 'Attached' : 'Missing'}
+                        Shooter{' '}
+                        {dashboardStats.latestSession.shooterUpload?.videoFilename
+                          ? 'Attached'
+                          : 'Missing'}
                       </Text>
                     </View>
 
@@ -298,7 +333,10 @@ export default function HomeScreen({ navigation }: Props) {
                       ]}
                     >
                       <Text style={styles.mediaBadgeText}>
-                        Goalkeeper {dashboardStats.latestSession.goalkeeperResponse?.videoFilename ? 'Attached' : 'Missing'}
+                        Goalkeeper{' '}
+                        {dashboardStats.latestSession.goalkeeperResponse?.videoFilename
+                          ? 'Attached'
+                          : 'Missing'}
                       </Text>
                     </View>
                   </View>
@@ -370,6 +408,19 @@ export default function HomeScreen({ navigation }: Props) {
                 <Text style={styles.label}>Session status:</Text> {sessionStatus}
               </Text>
 
+              {currentAnalysis && (
+                <View
+                  style={[
+                    styles.analysisBadge,
+                    getAnalysisBadgeStyle(currentAnalysis.verdict),
+                  ]}
+                >
+                  <Text style={styles.analysisBadgeText}>
+                    {currentAnalysis.verdict} · {currentAnalysis.readinessScore}/100
+                  </Text>
+                </View>
+              )}
+
               <View style={styles.mediaBadgeRow}>
                 <View
                   style={[
@@ -432,52 +483,68 @@ export default function HomeScreen({ navigation }: Props) {
                 {isSyncing ? 'Loading sessions...' : 'No completed sessions yet.'}
               </Text>
             ) : (
-              sessionHistory.slice(0, 5).map((session) => (
-                <TouchableOpacity
-                  key={session.challenge.id}
-                  style={styles.historyItem}
-                  onPress={() => handleOpenHistorySession(session.challenge.id)}
-                >
-                  <Text style={styles.historyItemTitle}>{session.challenge.challengeName}</Text>
-                  <Text style={styles.historyItemText}>
-                    Opponent: {session.challenge.opponent}
-                  </Text>
-                  <Text style={styles.historyItemText}>Status: {session.status}</Text>
-                  <Text style={styles.historyItemText}>
-                    Created: {new Date(session.challenge.createdAt).toLocaleString()}
-                  </Text>
+              sessionHistory.slice(0, 5).map((session) => {
+                const analysis = analyzeSession(session);
 
-                  <View style={styles.mediaBadgeRow}>
-                    <View
-                      style={[
-                        styles.mediaBadge,
-                        session.shooterUpload?.videoFilename
-                          ? styles.mediaBadgeReady
-                          : styles.mediaBadgeMissing,
-                      ]}
-                    >
-                      <Text style={styles.mediaBadgeText}>
-                        Shooter {session.shooterUpload?.videoFilename ? 'Attached' : 'Missing'}
-                      </Text>
-                    </View>
+                return (
+                  <TouchableOpacity
+                    key={session.challenge.id}
+                    style={styles.historyItem}
+                    onPress={() => handleOpenHistorySession(session.challenge.id)}
+                  >
+                    <Text style={styles.historyItemTitle}>{session.challenge.challengeName}</Text>
+                    <Text style={styles.historyItemText}>
+                      Opponent: {session.challenge.opponent}
+                    </Text>
+                    <Text style={styles.historyItemText}>Status: {session.status}</Text>
+                    <Text style={styles.historyItemText}>
+                      Created: {new Date(session.challenge.createdAt).toLocaleString()}
+                    </Text>
 
                     <View
                       style={[
-                        styles.mediaBadge,
-                        session.goalkeeperResponse?.videoFilename
-                          ? styles.mediaBadgeReady
-                          : styles.mediaBadgeMissing,
+                        styles.analysisBadge,
+                        getAnalysisBadgeStyle(analysis.verdict),
                       ]}
                     >
-                      <Text style={styles.mediaBadgeText}>
-                        Goalkeeper {session.goalkeeperResponse?.videoFilename ? 'Attached' : 'Missing'}
+                      <Text style={styles.analysisBadgeText}>
+                        {analysis.verdict} · {analysis.readinessScore}/100
                       </Text>
                     </View>
-                  </View>
 
-                  <Text style={styles.historyOpenText}>Tap to open session</Text>
-                </TouchableOpacity>
-              ))
+                    <View style={styles.mediaBadgeRow}>
+                      <View
+                        style={[
+                          styles.mediaBadge,
+                          session.shooterUpload?.videoFilename
+                            ? styles.mediaBadgeReady
+                            : styles.mediaBadgeMissing,
+                        ]}
+                      >
+                        <Text style={styles.mediaBadgeText}>
+                          Shooter {session.shooterUpload?.videoFilename ? 'Attached' : 'Missing'}
+                        </Text>
+                      </View>
+
+                      <View
+                        style={[
+                          styles.mediaBadge,
+                          session.goalkeeperResponse?.videoFilename
+                            ? styles.mediaBadgeReady
+                            : styles.mediaBadgeMissing,
+                        ]}
+                      >
+                        <Text style={styles.mediaBadgeText}>
+                          Goalkeeper{' '}
+                          {session.goalkeeperResponse?.videoFilename ? 'Attached' : 'Missing'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.historyOpenText}>Tap to open session</Text>
+                  </TouchableOpacity>
+                );
+              })
             )}
           </View>
         </View>
@@ -621,6 +688,27 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 10 },
   cardText: { fontSize: 15, lineHeight: 22, color: '#4B5563', marginBottom: 4 },
   label: { fontWeight: '700', color: '#111827' },
+  analysisBadge: {
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    marginTop: 10,
+    alignSelf: 'flex-start',
+  },
+  analysisBadgeStrong: {
+    backgroundColor: '#DCFCE7',
+  },
+  analysisBadgeMedium: {
+    backgroundColor: '#FEF3C7',
+  },
+  analysisBadgeWeak: {
+    backgroundColor: '#FEE2E2',
+  },
+  analysisBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#111827',
+  },
   mediaBadgeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
