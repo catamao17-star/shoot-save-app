@@ -84,3 +84,19 @@ export async function uploadSessionVideoToSupabase({
 
   return { path };
 }
+
+export async function createSignedVideoUrl(path: string, expiresIn = 3600): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(SESSION_VIDEOS_BUCKET)
+    .createSignedUrl(path, expiresIn);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data?.signedUrl) {
+    throw new Error('Signed URL not returned.');
+  }
+
+  return data.signedUrl;
+}

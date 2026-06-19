@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Alert,
@@ -9,7 +10,9 @@ import {
   View,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { saveSessionToSupabase } from '../services/sessionService';
+import { createSignedVideoUrl } from '../services/storageService';
 import { useChallenge } from '../context/ChallengeContext';
 import ProgressSteps from '../components/ProgressSteps';
 import type { QualityRating } from '../types/session';
@@ -33,6 +36,10 @@ export default function ResultsScreen({ navigation }: Props) {
     setSyncError,
   } = useChallenge();
 
+  const [shooterSignedUrl, setShooterSignedUrl] = useState<string | null>(null);
+  const [goalkeeperSignedUrl, setGoalkeeperSignedUrl] = useState<string | null>(null);
+  const [isLoadingMedia, setIsLoadingMedia] = useState(false);
+
   if (!currentSession) {
     return (
       <SafeAreaView style={styles.container}>
@@ -53,6 +60,44 @@ export default function ResultsScreen({ navigation }: Props) {
     analystNotes,
     qualityChecklist,
   } = currentSession;
+
+  const shooterPlayer = useVideoPlayer(shooterSignedUrl ?? null, (player) => {
+    player.loop = false;
+  });
+
+  const goalkeeperPlayer = useVideoPlayer(goalkeeperSignedUrl ?? null, (player) => {
+    player.loop = false;
+  });
+
+  useEffect(() => {
+    const loadSignedUrls = async () => {
+      try {
+        setIsLoadingMedia(true);
+
+        if (shooterUpload?.videoFilename) {
+          const url = await createSignedVideoUrl(shooterUpload.videoFilename);
+          setShooterSignedUrl(url);
+        } else {
+          setShooterSignedUrl(null);
+        }
+
+        if (goalkeeperResponse?.videoFilename) {
+          const url = await createSignedVideoUrl(goalkeeperResponse.videoFilename);
+          setGoalkeeperSignedUrl(url);
+        } else {
+          setGoalkeeperSignedUrl(null);
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unexpected error while loading media.';
+        Alert.alert('Media load failed', message);
+      } finally {
+        setIsLoadingMedia(false);
+      }
+    };
+
+    loadSignedUrls();
+  }, [shooterUpload?.videoFilename, goalkeeperResponse?.videoFilename]);
 
   const isShooterComplete = !!shooterUpload;
   const isGoalkeeperComplete = !!goalkeeperResponse;
@@ -172,7 +217,7 @@ export default function ResultsScreen({ navigation }: Props) {
             <Text style={styles.cardTitle}>Session Completeness Score</Text>
             <Text style={styles.scoreValue}>{completenessScore}/100</Text>
             <Text style={styles.scoreNote}>
-              Based on challenge data, shooter data, goalkeeper data, notes, checklist, and media placeholders.
+              Based on challenge data, shooter data, goalkeeper data, notes, checklist, and media.
             </Text>
             <Text style={styles.remoteIdText}>
               Remote ID: {remoteId ?? 'Not saved yet'}
@@ -268,6 +313,39 @@ export default function ResultsScreen({ navigation }: Props) {
           </View>
 
           <View style={styles.card}>
+            <Text style={styles.cardTitle}>Session Media</Text>
+            <Text style={styles.row}>
+              <Text style={styles.label}>Media loading:</Text> {isLoadingMedia ? 'Yes' : 'No'}
+            </Text>
+
+            <Text style={styles.mediaTitle}>Shooter Video</Text>
+            {shooterSignedUrl ? (
+              <VideoView
+                player={shooterPlayer}
+                style={styles.video}
+                allowsFullscreen
+                allowsPictureInPicture
+                nativeControls
+              />
+            ) : (
+              <Text style={styles.mediaEmpty}>No shooter video available.</Text>
+            )}
+
+            <Text style={styles.mediaTitle}>Goalkeeper Video</Text>
+            {goalkeeperSignedUrl ? (
+              <VideoView
+                player={goalkeeperPlayer}
+                style={styles.video}
+                allowsFullscreen
+                allowsPictureInPicture
+                nativeControls
+              />
+            ) : (
+              <Text style={styles.mediaEmpty}>No goalkeeper video available.</Text>
+            )}
+          </View>
+
+          <View style={styles.card}>
             <View style={styles.jsonHeader}>
               <Text style={styles.cardTitle}>Session JSON Preview</Text>
               <TouchableOpacity style={styles.copyButton} onPress={handleCopyJson}>
@@ -287,7 +365,7 @@ export default function ResultsScreen({ navigation }: Props) {
           >
             <Text style={styles.saveButtonText}>
               {isSyncing
-                ? 'Syncing…'
+                ? 'Syncing...'
                 : remoteId
                 ? 'Update in Supabase'
                 : 'Save to Supabase'}
@@ -404,6 +482,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2563EB',
     fontWeight: '600',
+  },
+  mediaTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  mediaEmpty: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  video: {
+    width: '100%',
+    height: 220,
+    borderRadius: 14,
+    backgroundColor: '#000000',
+    marginBottom: 12,
   },
   jsonHeader: {
     flexDirection: 'row',
