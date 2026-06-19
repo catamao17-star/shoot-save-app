@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { supabase } from '../lib/supabase';
+import { saveSessionToSupabase } from '../services/sessionService';
 import { useChallenge } from '../context/ChallengeContext';
 import ProgressSteps from '../components/ProgressSteps';
 import type { QualityRating } from '../types/session';
@@ -87,49 +87,21 @@ export default function ResultsScreen({ navigation }: Props) {
 
   const handleSaveToSupabase = async () => {
     try {
-      if (!remoteId) {
-        const { data, error } = await supabase
-          .from('sessions')
-          .insert({
-            challenge_id: challenge.id,
-            session_status: status,
-            completeness_score: completenessScore,
-            payload: exportPayload,
-          })
-          .select('id')
-          .single();
+      const result = await saveSessionToSupabase(currentSession, completenessScore);
 
-        if (error) {
-          Alert.alert('Save failed', error.message);
-          return;
-        }
+      if (!remoteId && result.remoteId) {
+        setRemoteId(result.remoteId);
+      }
 
-        if (data?.id) {
-          setRemoteId(data.id);
-        }
-
+      if (result.mode === 'inserted') {
         Alert.alert('Saved', 'New session saved to Supabase.');
         return;
       }
 
-      const { error } = await supabase
-        .from('sessions')
-        .update({
-          challenge_id: challenge.id,
-          session_status: status,
-          completeness_score: completenessScore,
-          payload: exportPayload,
-        })
-        .eq('id', remoteId);
-
-      if (error) {
-        Alert.alert('Update failed', error.message);
-        return;
-      }
-
       Alert.alert('Updated', 'Existing session updated in Supabase.');
-    } catch {
-      Alert.alert('Save failed', 'Unexpected error while saving session.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unexpected error while saving session.';
+      Alert.alert('Save failed', message);
     }
   };
 

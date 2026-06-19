@@ -2,21 +2,11 @@ import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from '../lib/supabase';
+import { fetchSessionsFromSupabase } from '../services/sessionService';
 import { useChallenge } from '../context/ChallengeContext';
-import type { ChallengeSession } from '../types/session';
 
 type Props = {
   navigation: any;
-};
-
-type SessionRow = {
-  id: number;
-  created_at: string;
-  challenge_id: string;
-  session_status: string;
-  completeness_score: number;
-  payload: any;
 };
 
 export default function HomeScreen({ navigation }: Props) {
@@ -29,24 +19,9 @@ export default function HomeScreen({ navigation }: Props) {
     resetSession,
   } = useChallenge();
 
-  const fetchSessionsFromSupabase = async (showAlert = false) => {
+  const fetchBackendSessions = async (showAlert = false) => {
     try {
-      const { data, error } = await supabase
-        .from('sessions')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (error) {
-        if (showAlert) {
-          Alert.alert('Load failed', error.message);
-        }
-        return;
-      }
-
-      const parsedSessions: ChallengeSession[] = ((data ?? []) as SessionRow[])
-        .map((row) => row.payload as ChallengeSession)
-        .filter(Boolean);
+      const parsedSessions = await fetchSessionsFromSupabase(10);
 
       setSessionHistory(parsedSessions);
 
@@ -58,14 +33,15 @@ export default function HomeScreen({ navigation }: Props) {
         Alert.alert('Loaded', `${parsedSessions.length} session(s) loaded from Supabase.`);
       }
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unexpected error while loading sessions.';
       if (showAlert) {
-        Alert.alert('Load failed', 'Unexpected error while loading sessions.');
+        Alert.alert('Load failed', message);
       }
     }
   };
 
   useEffect(() => {
-    fetchSessionsFromSupabase(false);
+    fetchBackendSessions(false);
   }, []);
 
   const handleResetChallenge = () => {
@@ -107,7 +83,7 @@ export default function HomeScreen({ navigation }: Props) {
   };
 
   const handleLoadFromSupabase = async () => {
-    await fetchSessionsFromSupabase(true);
+    await fetchBackendSessions(true);
   };
 
   const challenge = currentSession?.challenge;
