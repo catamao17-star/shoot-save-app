@@ -1,17 +1,15 @@
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
-import type {
-  Challenge,
-  ShooterUploadData,
-  GoalkeeperResponseData,
-} from '../types/challenge';
+import type { Challenge } from '../types/challenge';
+import type { ShooterUploadData } from '../types/challenge';
+import type { GoalkeeperResponseData } from '../types/challenge';
+import type { ChallengeSession } from '../types/session';
 
 type ChallengeContextType = {
-  currentChallenge: Challenge | null;
-  setCurrentChallenge: (challenge: Challenge | null) => void;
-  shooterUploadData: ShooterUploadData | null;
+  currentSession: ChallengeSession | null;
+  createSession: (challenge: Challenge) => void;
   setShooterUploadData: (data: ShooterUploadData | null) => void;
-  goalkeeperResponseData: GoalkeeperResponseData | null;
   setGoalkeeperResponseData: (data: GoalkeeperResponseData | null) => void;
+  resetSession: () => void;
 };
 
 const ChallengeContext = createContext<ChallengeContextType | undefined>(undefined);
@@ -21,21 +19,51 @@ type Props = {
 };
 
 export function ChallengeProvider({ children }: Props) {
-  const [currentChallenge, setCurrentChallenge] = useState<Challenge | null>(null);
-  const [shooterUploadData, setShooterUploadData] = useState<ShooterUploadData | null>(null);
-  const [goalkeeperResponseData, setGoalkeeperResponseData] =
-    useState<GoalkeeperResponseData | null>(null);
+  const [currentSession, setCurrentSession] = useState<ChallengeSession | null>(null);
+
+  const createSession = (challenge: Challenge) => {
+    setCurrentSession({
+      challenge,
+      shooterUpload: null,
+      goalkeeperResponse: null,
+    });
+  };
+
+  const setShooterUploadData = (data: ShooterUploadData | null) => {
+    setCurrentSession((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        shooterUpload: data,
+      };
+    });
+  };
+
+  const setGoalkeeperResponseData = (data: GoalkeeperResponseData | null) => {
+    setCurrentSession((prev) => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        goalkeeperResponse: data,
+      };
+    });
+  };
+
+  const resetSession = () => {
+    setCurrentSession(null);
+  };
 
   const value = useMemo(
     () => ({
-      currentChallenge,
-      setCurrentChallenge,
-      shooterUploadData,
+      currentSession,
+      createSession,
       setShooterUploadData,
-      goalkeeperResponseData,
       setGoalkeeperResponseData,
+      resetSession,
     }),
-    [currentChallenge, shooterUploadData, goalkeeperResponseData]
+    [currentSession]
   );
 
   return <ChallengeContext.Provider value={value}>{children}</ChallengeContext.Provider>;

@@ -8,14 +8,7 @@ type Props = {
 };
 
 export default function HomeScreen({ navigation }: Props) {
-  const {
-    currentChallenge,
-    shooterUploadData,
-    goalkeeperResponseData,
-    setCurrentChallenge,
-    setShooterUploadData,
-    setGoalkeeperResponseData,
-  } = useChallenge();
+  const { currentSession, resetSession } = useChallenge();
 
   const handleResetChallenge = () => {
     Alert.alert(
@@ -27,14 +20,16 @@ export default function HomeScreen({ navigation }: Props) {
           text: 'Reset',
           style: 'destructive',
           onPress: () => {
-            setCurrentChallenge(null);
-            setShooterUploadData(null);
-            setGoalkeeperResponseData(null);
+            resetSession();
           },
         },
       ]
     );
   };
+
+  const challenge = currentSession?.challenge;
+  const shooterUpload = currentSession?.shooterUpload;
+  const goalkeeperResponse = currentSession?.goalkeeperResponse;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -53,31 +48,29 @@ export default function HomeScreen({ navigation }: Props) {
           </Text>
         </View>
 
-        {currentChallenge && (
+        {challenge && (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Current Challenge</Text>
             <Text style={styles.cardText}>
-              <Text style={styles.label}>Challenge ID:</Text> {currentChallenge.id}
+              <Text style={styles.label}>Challenge ID:</Text> {challenge.id}
             </Text>
             <Text style={styles.cardText}>
-              <Text style={styles.label}>Created At:</Text> {new Date(currentChallenge.createdAt).toLocaleString()}
+              <Text style={styles.label}>Created At:</Text> {new Date(challenge.createdAt).toLocaleString()}
             </Text>
             <Text style={styles.cardText}>
-              <Text style={styles.label}>Challenge:</Text> {currentChallenge.challengeName}
+              <Text style={styles.label}>Challenge:</Text> {challenge.challengeName}
             </Text>
             <Text style={styles.cardText}>
-              <Text style={styles.label}>Opponent:</Text> {currentChallenge.opponent}
+              <Text style={styles.label}>Opponent:</Text> {challenge.opponent}
             </Text>
             <Text style={styles.cardText}>
-              <Text style={styles.label}>Cue-hiding method:</Text> {currentChallenge.occlusionMethod}
+              <Text style={styles.label}>Cue-hiding method:</Text> {challenge.occlusionMethod}
             </Text>
             <Text style={styles.cardText}>
-              <Text style={styles.label}>Shooter data:</Text>{' '}
-              {shooterUploadData ? 'Completed' : 'Not completed'}
+              <Text style={styles.label}>Shooter data:</Text> {shooterUpload ? 'Completed' : 'Not completed'}
             </Text>
             <Text style={styles.cardText}>
-              <Text style={styles.label}>Goalkeeper data:</Text>{' '}
-              {goalkeeperResponseData ? 'Completed' : 'Not completed'}
+              <Text style={styles.label}>Goalkeeper data:</Text> {goalkeeperResponse ? 'Completed' : 'Not completed'}
             </Text>
           </View>
         )}
@@ -87,7 +80,7 @@ export default function HomeScreen({ navigation }: Props) {
           onPress={() => navigation.navigate('CreateChallenge')}
         >
           <Text style={styles.primaryButtonText}>
-            {currentChallenge ? 'Create New Challenge' : 'Create Challenge'}
+            {challenge ? 'Create New Challenge' : 'Create Challenge'}
           </Text>
         </TouchableOpacity>
 
@@ -98,7 +91,7 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.secondaryButtonText}>View Current Results</Text>
         </TouchableOpacity>
 
-        {currentChallenge && (
+        {challenge && (
           <TouchableOpacity style={styles.resetButton} onPress={handleResetChallenge}>
             <Text style={styles.resetButtonText}>Reset Challenge</Text>
           </TouchableOpacity>
@@ -109,28 +102,15 @@ export default function HomeScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F4F7FB',
-  },
+  container: { flex: 1, backgroundColor: '#F4F7FB' },
   content: {
     flex: 1,
     paddingHorizontal: 24,
     paddingVertical: 32,
     justifyContent: 'center',
   },
-  title: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: '#4B5563',
-    marginBottom: 28,
-  },
+  title: { fontSize: 36, fontWeight: '800', color: '#111827', marginBottom: 12 },
+  subtitle: { fontSize: 16, lineHeight: 24, color: '#4B5563', marginBottom: 28 },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
@@ -142,22 +122,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 10,
-  },
-  cardText: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: '#4B5563',
-    marginBottom: 4,
-  },
-  label: {
-    fontWeight: '700',
-    color: '#111827',
-  },
+  cardTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 10 },
+  cardText: { fontSize: 15, lineHeight: 22, color: '#4B5563', marginBottom: 4 },
+  label: { fontWeight: '700', color: '#111827' },
   primaryButton: {
     backgroundColor: '#111827',
     paddingVertical: 16,
@@ -165,11 +132,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   secondaryButton: {
     backgroundColor: '#E5E7EB',
     paddingVertical: 16,
@@ -177,20 +140,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 14,
   },
-  secondaryButtonText: {
-    color: '#111827',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  secondaryButtonText: { color: '#111827', fontSize: 16, fontWeight: '700' },
   resetButton: {
     backgroundColor: '#FEE2E2',
     paddingVertical: 16,
     borderRadius: 14,
     alignItems: 'center',
   },
-  resetButtonText: {
-    color: '#B91C1C',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  resetButtonText: { color: '#B91C1C', fontSize: 16, fontWeight: '700' },
 });

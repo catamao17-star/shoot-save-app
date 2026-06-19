@@ -17,7 +17,7 @@ export default function CreateChallengeScreen({ navigation }: Props) {
   const [challengeName, setChallengeName] = useState('');
   const [opponent, setOpponent] = useState('');
   const [occlusionMethod, setOcclusionMethod] = useState('');
-  const { setCurrentChallenge, setShooterUploadData, setGoalkeeperResponseData } = useChallenge();
+  const { createSession } = useChallenge();
 
   const handleContinue = () => {
     if (!challengeName.trim() || !opponent.trim() || !occlusionMethod.trim()) {
@@ -33,9 +33,7 @@ export default function CreateChallengeScreen({ navigation }: Props) {
       occlusionMethod: occlusionMethod.trim(),
     };
 
-    setCurrentChallenge(challenge);
-    setShooterUploadData(null);
-    setGoalkeeperResponseData(null);
+    createSession(challenge);
     navigation.navigate('ShooterUpload');
   };
 
