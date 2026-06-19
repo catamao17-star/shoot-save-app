@@ -1,4 +1,5 @@
-\import { supabase } from '../lib/supabase';
+// services/sessionService.ts
+import { supabase } from '../lib/supabase';
 import type { ChallengeSession } from '../types/session';
 
 type SessionRow = {
@@ -141,4 +142,25 @@ export async function saveSessionToSupabase(
     remoteId: session.remoteId,
     mode: 'updated',
   };
+}
+
+export async function deleteSessionFromSupabase(remoteId: number): Promise<void> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    throw new Error('No authenticated user found.');
+  }
+
+  const { error } = await supabase
+    .from('sessions')
+    .delete()
+    .eq('id', remoteId)
+    .eq('user_id', user.id);
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }

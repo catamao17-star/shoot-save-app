@@ -1,3 +1,4 @@
+// screens/MySessionsScreen.tsx
 import { useEffect, useState } from 'react';
 import {
   Alert,
@@ -9,7 +10,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { fetchAllSessionsFromSupabase } from '../services/sessionService';
+import {
+  deleteSessionFromSupabase,
+  fetchAllSessionsFromSupabase,
+} from '../services/sessionService';
 import { useChallenge } from '../context/ChallengeContext';
 import type { ChallengeSession } from '../types/session';
 
@@ -18,10 +22,11 @@ type Props = {
 };
 
 export default function MySessionsScreen({ navigation }: Props) {
-  const { loadSessionObject, setSessionHistory } = useChallenge();
+  const { currentSession, loadSessionObject, setSessionHistory, resetSession } = useChallenge();
   const [sessions, setSessions] = useState<ChallengeSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [deletingRemoteId, setDeletingRemoteId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadSessions = async (refresh = false) => {
@@ -60,6 +65,51 @@ export default function MySessionsScreen({ navigation }: Props) {
     await loadSessions(true);
   };
 
+  const handleDeleteSession = (session: ChallengeSession) => {
+    if (!session.remoteId) {
+      Alert.alert('Delete failed', 'This session has no remote id.');
+      return;
+    }
+
+    Alert.alert(
+      'Delete session',
+      `Are you sure you want to delete "${session.challenge.challengeName}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setDeletingRemoteId(session.remoteId!);
+
+              await deleteSessionFromSupabase(session.remoteId!);
+
+              const updatedSessions = sessions.filter(
+                (item) => item.remoteId !== session.remoteId
+              );
+
+              setSessions(updatedSessions);
+              setSessionHistory(updatedSessions);
+
+              if (currentSession?.remoteId === session.remoteId) {
+                resetSession();
+              }
+
+              Alert.alert('Deleted', 'Session deleted from Supabase.');
+            } catch (err) {
+              const message =
+                err instanceof Error ? err.message : 'Unexpected error while deleting session.';
+              Alert.alert('Delete failed', message);
+            } finally {
+              setDeletingRemoteId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -88,24 +138,39 @@ export default function MySessionsScreen({ navigation }: Props) {
               <Text style={styles.emptyText}>No sessions found for this account yet.</Text>
             </View>
           ) : (
-            sessions.map((session) => (
-              <TouchableOpacity
-                key={`${session.remoteId ?? session.challenge.id}`}
-                style={styles.sessionCard}
-                onPress={() => handleOpenSession(session)}
-              >
-                <Text style={styles.sessionTitle}>{session.challenge.challengeName}</Text>
-                <Text style={styles.sessionText}>Opponent: {session.challenge.opponent}</Text>
-                <Text style={styles.sessionText}>Status: {session.status}</Text>
-                <Text style={styles.sessionText}>
-                  Remote ID: {session.remoteId ?? 'Not synced'}
-                </Text>
-                <Text style={styles.sessionText}>
-                  Created: {new Date(session.challenge.createdAt).toLocaleString()}
-                </Text>
-                <Text style={styles.openText}>Tap to open session</Text>
-              </TouchableOpacity>
-            ))
+            sessions.map((session) => {
+              const isDeleting = deletingRemoteId === session.remoteId;
+
+              return (
+                <View
+                  key={`${session.remoteId ?? session.challenge.id}`}
+                  style={styles.sessionCard}
+                >
+                  <TouchableOpacity onPress={() => handleOpenSession(session)}>
+                    <Text style={styles.sessionTitle}>{session.challenge.challengeName}</Text>
+                    <Text style={styles.sessionText}>Opponent: {session.challenge.opponent}</Text>
+                    <Text style={styles.sessionText}>Status: {session.status}</Text>
+                    <Text style={styles.sessionText}>
+                      Remote ID: {session.remoteId ?? 'Not synced'}
+                    </Text>
+                    <Text style={styles.sessionText}>
+                      Created: {new Date(session.challenge.createdAt).toLocaleString()}
+                    </Text>
+                    <Text style={styles.openText}>Tap to open session</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.deleteButton, isDeleting && styles.buttonDisabled]}
+                    onPress={() => handleDeleteSession(session)}
+                    disabled={isDeleting}
+                  >
+                    <Text style={styles.deleteButtonText}>
+                      {isDeleting ? 'Deleting...' : 'Delete Session'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })
           )}
 
           <TouchableOpacity
@@ -181,6 +246,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#2563EB',
+  },
+  deleteButton: {
+    backgroundColor: '#FEE2E2',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 14,
+  },
+  deleteButtonText: {
+    color: '#B91C1C',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   homeButton: {
     backgroundColor: '#E5E7EB',
