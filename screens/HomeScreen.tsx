@@ -8,7 +8,7 @@ type Props = {
 };
 
 export default function HomeScreen({ navigation }: Props) {
-  const { currentSession, sessionHistory, resetSession } = useChallenge();
+  const { currentSession, sessionHistory, loadSessionFromHistory, resetSession } = useChallenge();
 
   const handleResetChallenge = () => {
     Alert.alert(
@@ -40,6 +40,11 @@ export default function HomeScreen({ navigation }: Props) {
       return;
     }
 
+    navigation.navigate('Results');
+  };
+
+  const handleOpenHistorySession = (sessionId: string) => {
+    loadSessionFromHistory(sessionId);
     navigation.navigate('Results');
   };
 
@@ -134,7 +139,11 @@ export default function HomeScreen({ navigation }: Props) {
               <Text style={styles.historyEmpty}>No completed sessions yet.</Text>
             ) : (
               sessionHistory.slice(0, 5).map((session) => (
-                <View key={session.challenge.id} style={styles.historyItem}>
+                <TouchableOpacity
+                  key={session.challenge.id}
+                  style={styles.historyItem}
+                  onPress={() => handleOpenHistorySession(session.challenge.id)}
+                >
                   <Text style={styles.historyItemTitle}>{session.challenge.challengeName}</Text>
                   <Text style={styles.historyItemText}>
                     Opponent: {session.challenge.opponent}
@@ -145,7 +154,8 @@ export default function HomeScreen({ navigation }: Props) {
                   <Text style={styles.historyItemText}>
                     Created: {new Date(session.challenge.createdAt).toLocaleString()}
                   </Text>
-                </View>
+                  <Text style={styles.historyOpenText}>Tap to open session</Text>
+                </TouchableOpacity>
               ))
             )}
           </View>
@@ -247,5 +257,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4B5563',
     marginBottom: 2,
+  },
+  historyOpenText: {
+    fontSize: 13,
+    color: '#2563EB',
+    fontWeight: '600',
+    marginTop: 6,
   },
 });
