@@ -18,6 +18,10 @@ import type {
   SaveAttemptResult,
 } from '../types/challenge';
 import ProgressSteps from '../components/ProgressSteps';
+import {
+  pickVideoFromLibrary,
+  uploadSessionVideoToSupabase,
+} from '../services/storageService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GoalkeeperResponse'>;
 
@@ -28,44 +32,71 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
   const { currentSession, setGoalkeeperResponseData } = useChallenge();
   const [reactionDirection, setReactionDirection] = useState<ReactionDirection>('Center');
   const [reactionTimingNote, setReactionTimingNote] = useState('');
-  const [saveAttemptResult, setSaveAttemptResult] = useState<SaveAttemptResult>('Late Reaction');
+  const [saveAttemptResult, setSaveAttemptResult] =
+    useState<SaveAttemptResult>('Late Reaction');
   const [responseVideoSelected, setResponseVideoSelected] = useState(false);
-  const [videoFilename, setVideoFilename] = useState('goalkeeper-response-demo.mp4');
+  const [videoFilename, setVideoFilename] = useState('');
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
 
   if (!currentSession) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.content}>
           <Text style={styles.title}>Goalkeeper Response</Text>
-          <Text style={styles.subtitle}>No session found. Please create a challenge first.</Text>
+          <Text style={styles.subtitle}>No challenge found. Please create a challenge first.</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const { challenge, shooterUpload } = currentSession;
+  const challenge = currentSession.challenge;
+  const shooterUploadData = currentSession.shooterUpload;
+
+  const handlePickAndUploadVideo = async () => {
+    try {
+      setIsUploadingVideo(true);
+
+      const uri = await pickVideoFromLibrary();
+
+      if (!uri) {
+        return;
+      }
+
+      const uploaded = await uploadSessionVideoToSupabase({
+        challengeId: challenge.id,
+        role: 'goalkeeper',
+        localUri: uri,
+      });
+
+      setResponseVideoSelected(true);
+      setVideoFilename(uploaded.path);
+
+      Alert.alert('Uploaded', 'Goalkeeper video uploaded to Supabase Storage.');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unexpected error while uploading video.';
+      Alert.alert('Upload failed', message);
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  };
 
   const handleContinue = () => {
-    if (!responseVideoSelected) {
+    if (!responseVideoSelected || !videoFilename.trim()) {
       Alert.alert(
         'Missing response video',
-        'Please mark the goalkeeper response video as selected before continuing.'
+        'Please upload the goalkeeper response video before continuing.'
       );
       return;
     }
 
-    if (!videoFilename.trim()) {
-      Alert.alert('Missing filename', 'Please add a mock video filename before continuing.');
-      return;
-    }
-
     const goalkeeperData: GoalkeeperResponseData = {
-      submittedAt: new Date().toISOString(),
       reactionDirection,
       reactionTimingNote: reactionTimingNote.trim(),
       saveAttemptResult,
       responseVideoSelected,
-      videoFilename: videoFilename.trim(),
+      videoFilename,
+      submittedAt: new Date().toISOString(),
     };
 
     setGoalkeeperResponseData(goalkeeperData);
@@ -74,13 +105,16 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.content}>
           <ProgressSteps currentStep={3} />
 
           <Text style={styles.title}>Goalkeeper Response</Text>
           <Text style={styles.subtitle}>
-            This screen represents the goalkeeper watching the challenge and recording a save attempt.
+            Upload the goalkeeper response video and save real media metadata for the session.
           </Text>
 
           <View style={styles.card}>
@@ -91,23 +125,23 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
             </Text>
             <Text style={styles.cardText}>Challenge: {challenge.challengeName}</Text>
             <Text style={styles.cardText}>Opponent: {challenge.opponent}</Text>
-            <Text style={styles.cardText}>Cue-hiding method: {challenge.occlusionMethod}</Text>
-            <Text style={styles.cardText}>Current session status: {currentSession.status}</Text>
+            <Text style={styles.cardText}>
+              Cue-hiding method: {challenge.occlusionMethod}
+            </Text>
           </View>
 
-          {shooterUpload && (
+          {shooterUploadData && (
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Shooter Metadata</Text>
+              <Text style={styles.cardText}>Camera angle: {shooterUploadData.cameraAngle}</Text>
               <Text style={styles.cardText}>
-                Submitted At: {new Date(shooterUpload.submittedAt).toLocaleString()}
+                Shot notes: {shooterUploadData.shotNotes || 'None provided'}
               </Text>
-              <Text style={styles.cardText}>Camera angle: {shooterUpload.cameraAngle}</Text>
               <Text style={styles.cardText}>
-                Shot notes: {shooterUpload.shotNotes || 'None provided'}
+                Video uploaded: {shooterUploadData.videoSelected ? 'Yes' : 'No'}
               </Text>
-              <Text style={styles.cardText}>Video filename: {shooterUpload.videoFilename}</Text>
               <Text style={styles.cardText}>
-                Video selected: {shooterUpload.videoSelected ? 'Yes' : 'No'}
+                Video path: {shooterUploadData.videoFilename || 'None provided'}
               </Text>
             </View>
           )}
@@ -119,6 +153,7 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
             <View style={styles.optionRow}>
               {reactionDirectionOptions.map((option) => {
                 const isSelected = reactionDirection === option;
+
                 return (
                   <TouchableOpacity
                     key={option}
@@ -126,7 +161,10 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
                     onPress={() => setReactionDirection(option)}
                   >
                     <Text
-                      style={[styles.optionButtonText, isSelected && styles.optionButtonTextSelected]}
+                      style={[
+                        styles.optionButtonText,
+                        isSelected && styles.optionButtonTextSelected,
+                      ]}
                     >
                       {option}
                     </Text>
@@ -144,18 +182,11 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
               multiline
             />
 
-            <Text style={styles.label}>Mock Video Filename</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="goalkeeper-response-demo.mp4"
-              value={videoFilename}
-              onChangeText={setVideoFilename}
-            />
-
             <Text style={styles.label}>Save Attempt Result</Text>
             <View style={styles.optionRow}>
               {saveAttemptResultOptions.map((option) => {
                 const isSelected = saveAttemptResult === option;
+
                 return (
                   <TouchableOpacity
                     key={option}
@@ -163,7 +194,10 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
                     onPress={() => setSaveAttemptResult(option)}
                   >
                     <Text
-                      style={[styles.optionButtonText, isSelected && styles.optionButtonTextSelected]}
+                      style={[
+                        styles.optionButtonText,
+                        isSelected && styles.optionButtonTextSelected,
+                      ]}
                     >
                       {option}
                     </Text>
@@ -174,18 +208,12 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
 
             <Text style={styles.label}>Response Video</Text>
             <TouchableOpacity
-              style={[styles.videoButton, responseVideoSelected && styles.videoButtonSelected]}
-              onPress={() => setResponseVideoSelected((prev) => !prev)}
+              style={[styles.videoButton, isUploadingVideo && styles.videoButtonDisabled]}
+              onPress={handlePickAndUploadVideo}
+              disabled={isUploadingVideo}
             >
-              <Text
-                style={[
-                  styles.videoButtonText,
-                  responseVideoSelected && styles.videoButtonTextSelected,
-                ]}
-              >
-                {responseVideoSelected
-                  ? 'Goalkeeper Response Video Selected'
-                  : 'Mark Goalkeeper Response Video as Selected'}
+              <Text style={styles.videoButtonText}>
+                {isUploadingVideo ? 'Uploading video...' : 'Pick and Upload Goalkeeper Video'}
               </Text>
             </TouchableOpacity>
 
@@ -195,10 +223,12 @@ export default function GoalkeeperResponseScreen({ navigation }: Props) {
               <Text style={styles.summaryText}>
                 Timing note: {reactionTimingNote.trim() ? reactionTimingNote : 'None yet'}
               </Text>
-              <Text style={styles.summaryText}>Video filename: {videoFilename.trim() || 'None yet'}</Text>
               <Text style={styles.summaryText}>Result: {saveAttemptResult}</Text>
               <Text style={styles.summaryText}>
-                Response video selected: {responseVideoSelected ? 'Yes' : 'No'}
+                Video uploaded: {responseVideoSelected ? 'Yes' : 'No'}
+              </Text>
+              <Text style={styles.summaryText}>
+                Video path: {videoFilename || 'None yet'}
               </Text>
             </View>
           </View>
@@ -228,17 +258,35 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 12 },
   cardText: { fontSize: 15, color: '#4B5563', marginBottom: 6 },
-  label: { fontSize: 14, fontWeight: '700', color: '#374151', marginBottom: 8, marginTop: 14 },
-  optionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  label: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 8,
+    marginTop: 14,
+  },
+  optionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
   optionButton: {
     backgroundColor: '#E5E7EB',
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 12,
   },
-  optionButtonSelected: { backgroundColor: '#111827' },
-  optionButtonText: { color: '#111827', fontSize: 14, fontWeight: '600' },
-  optionButtonTextSelected: { color: '#FFFFFF' },
+  optionButtonSelected: {
+    backgroundColor: '#111827',
+  },
+  optionButtonText: {
+    color: '#111827',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  optionButtonTextSelected: {
+    color: '#FFFFFF',
+  },
   input: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -246,20 +294,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#D1D5DB',
   },
-  notesInput: { minHeight: 100, textAlignVertical: 'top' },
+  notesInput: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
   videoButton: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#DBEAFE',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
   },
-  videoButtonSelected: {
-    backgroundColor: '#DCFCE7',
-    borderWidth: 1,
-    borderColor: '#86EFAC',
+  videoButtonDisabled: {
+    opacity: 0.6,
   },
-  videoButtonText: { color: '#111827', fontSize: 15, fontWeight: '700' },
-  videoButtonTextSelected: { color: '#166534' },
+  videoButtonText: {
+    color: '#1D4ED8',
+    fontSize: 15,
+    fontWeight: '700',
+  },
   summaryBox: {
     backgroundColor: '#F9FAFB',
     borderRadius: 14,
@@ -268,8 +320,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  summaryTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 8 },
-  summaryText: { fontSize: 14, color: '#4B5563', marginBottom: 4 },
+  summaryTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  summaryText: {
+    fontSize: 14,
+    color: '#4B5563',
+    marginBottom: 4,
+  },
   button: {
     backgroundColor: '#111827',
     paddingVertical: 16,
@@ -277,5 +338,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 10,
   },
-  buttonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  buttonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });
