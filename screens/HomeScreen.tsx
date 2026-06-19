@@ -121,6 +121,27 @@ export default function HomeScreen({ navigation }: Props) {
 
     const latestAnalysis = latestSession ? analyzeSession(latestSession) : null;
 
+    const reportCounts = sessionHistory.map((session) => ({
+      session,
+      reportCount: (session as any).reportCount ?? 0,
+      lastReportExportedAt: (session as any).lastReportExportedAt ?? null,
+    }));
+
+    const totalReportsExported = reportCounts.reduce((sum, item) => sum + item.reportCount, 0);
+    const sessionsWithReports = reportCounts.filter((item) => item.reportCount > 0).length;
+
+    const latestReportSession =
+      reportCounts
+        .filter((item) => item.lastReportExportedAt)
+        .sort(
+          (a, b) =>
+            new Date(b.lastReportExportedAt).getTime() -
+            new Date(a.lastReportExportedAt).getTime()
+        )[0] ?? null;
+
+    const mostExportedSession =
+      [...reportCounts].sort((a, b) => b.reportCount - a.reportCount)[0] ?? null;
+
     return {
       total,
       complete,
@@ -132,6 +153,10 @@ export default function HomeScreen({ navigation }: Props) {
       completionRate,
       latestSession,
       latestAnalysis,
+      totalReportsExported,
+      sessionsWithReports,
+      latestReportSession,
+      mostExportedSession,
     };
   }, [sessionHistory]);
 
@@ -342,6 +367,44 @@ export default function HomeScreen({ navigation }: Props) {
                   </View>
                 </>
               )}
+            </View>
+          </View>
+
+          <View style={styles.statsCard}>
+            <Text style={styles.statsTitle}>Report Analytics</Text>
+
+            <View style={styles.statsGrid}>
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{dashboardStats.totalReportsExported}</Text>
+                <Text style={styles.statLabel}>Total Reports</Text>
+              </View>
+
+              <View style={styles.statBox}>
+                <Text style={styles.statValue}>{dashboardStats.sessionsWithReports}</Text>
+                <Text style={styles.statLabel}>Sessions With Reports</Text>
+              </View>
+            </View>
+
+            <View style={styles.latestBox}>
+              <Text style={styles.latestTitle}>Most Exported Session</Text>
+              <Text style={styles.latestText}>
+                {dashboardStats.mostExportedSession?.session?.challenge?.challengeName ?? 'None yet'}
+              </Text>
+              <Text style={styles.latestSubtext}>
+                Count: {dashboardStats.mostExportedSession?.reportCount ?? 0}
+              </Text>
+            </View>
+
+            <View style={[styles.latestBox, { marginTop: 12 }]}>
+              <Text style={styles.latestTitle}>Latest Report Export</Text>
+              <Text style={styles.latestText}>
+                {dashboardStats.latestReportSession?.session?.challenge?.challengeName ?? 'None yet'}
+              </Text>
+              <Text style={styles.latestSubtext}>
+                {dashboardStats.latestReportSession?.lastReportExportedAt
+                  ? new Date(dashboardStats.latestReportSession.lastReportExportedAt).toLocaleString()
+                  : 'Never'}
+              </Text>
             </View>
           </View>
 
