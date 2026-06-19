@@ -1,4 +1,4 @@
-\import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Challenge } from '../types/challenge';
 import type { ShooterUploadData } from '../types/challenge';

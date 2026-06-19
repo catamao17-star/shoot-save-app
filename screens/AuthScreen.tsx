@@ -11,6 +11,7 @@ export default function AuthScreen() {
   const handleSignUp = async () => {
     try {
       setIsLoading(true);
+
       const { error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -32,6 +33,7 @@ export default function AuthScreen() {
   const handleSignIn = async () => {
     try {
       setIsLoading(true);
+
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
@@ -79,7 +81,7 @@ export default function AuthScreen() {
           disabled={isLoading}
         >
           <Text style={styles.primaryButtonText}>
-            {isLoading ? 'Loading…' : 'Sign In'}
+            {isLoading ? 'Loading...' : 'Sign In'}
           </Text>
         </TouchableOpacity>
 

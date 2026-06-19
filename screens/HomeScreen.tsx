@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { supabase } from '../lib/supabase';
 import { fetchSessionsFromSupabase } from '../services/sessionService';
 import { useChallenge } from '../context/ChallengeContext';
 
@@ -22,6 +23,27 @@ export default function HomeScreen({ navigation }: Props) {
     setIsSyncing,
     setSyncError,
   } = useChallenge();
+
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+
+      if (error) {
+        setUserEmail(null);
+        return;
+      }
+
+      setUserEmail(user?.email ?? null);
+    } catch {
+      setUserEmail(null);
+    }
+  };
 
   const fetchBackendSessions = async (showAlert = false) => {
     try {
@@ -53,8 +75,30 @@ export default function HomeScreen({ navigation }: Props) {
   };
 
   useEffect(() => {
+    fetchCurrentUser();
     fetchBackendSessions(false);
   }, []);
+
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true);
+
+      const { error } = await supabase.auth.signOut();
+
+      if (error) {
+        Alert.alert('Sign out failed', error.message);
+        return;
+      }
+
+      resetSession();
+      setSessionHistory([]);
+      setUserEmail(null);
+    } catch {
+      Alert.alert('Sign out failed', 'Unexpected error while signing out.');
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
 
   const handleResetChallenge = () => {
     Alert.alert(
@@ -113,6 +157,21 @@ export default function HomeScreen({ navigation }: Props) {
             Remote soccer challenge prototype for shooter vs goalkeeper
           </Text>
 
+          <View style={styles.userCard}>
+            <Text style={styles.userCardTitle}>Connected Account</Text>
+            <Text style={styles.userCardText}>{userEmail ?? 'No user email found'}</Text>
+
+            <TouchableOpacity
+              style={[styles.signOutButton, isSigningOut && styles.buttonDisabled]}
+              onPress={handleSignOut}
+              disabled={isSigningOut}
+            >
+              <Text style={styles.signOutButtonText}>
+                {isSigningOut ? 'Signing out...' : 'Sign Out'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Version 1 Goal</Text>
             <Text style={styles.cardText}>
@@ -122,12 +181,12 @@ export default function HomeScreen({ navigation }: Props) {
           </View>
 
           <TouchableOpacity
-            style={[styles.loadButton, isSyncing && styles.loadButtonDisabled]}
+            style={[styles.loadButton, isSyncing && styles.buttonDisabled]}
             onPress={handleLoadFromSupabase}
             disabled={isSyncing}
           >
             <Text style={styles.loadButtonText}>
-              {isSyncing ? 'Syncing…' : 'Refresh from Supabase'}
+              {isSyncing ? 'Syncing...' : 'Refresh from Supabase'}
             </Text>
           </TouchableOpacity>
 
@@ -204,7 +263,7 @@ export default function HomeScreen({ navigation }: Props) {
 
             {sessionHistory.length === 0 ? (
               <Text style={styles.historyEmpty}>
-                {isSyncing ? 'Loading sessions…' : 'No completed sessions yet.'}
+                {isSyncing ? 'Loading sessions...' : 'No completed sessions yet.'}
               </Text>
             ) : (
               sessionHistory.slice(0, 10).map((session) => (
@@ -242,6 +301,36 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 36, fontWeight: '800', color: '#111827', marginBottom: 12 },
   subtitle: { fontSize: 16, lineHeight: 24, color: '#4B5563', marginBottom: 28 },
+  userCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  userCardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  userCardText: {
+    fontSize: 15,
+    color: '#4B5563',
+    marginBottom: 14,
+  },
+  signOutButton: {
+    backgroundColor: '#FEE2E2',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  signOutButtonText: {
+    color: '#B91C1C',
+    fontSize: 15,
+    fontWeight: '700',
+  },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
@@ -284,13 +373,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#86EFAC',
   },
-  loadButtonDisabled: {
-    opacity: 0.6,
-  },
   loadButtonText: {
     color: '#166534',
     fontSize: 16,
     fontWeight: '700',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   resumeButton: {
     backgroundColor: '#DBEAFE',

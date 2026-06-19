@@ -28,17 +28,28 @@ function AppNavigator() {
   const [isBooting, setIsBooting] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session ?? null);
-      setIsBooting(false);
-    });
+    let isMounted = true;
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const loadSession = async () => {
+      const { data } = await supabase.auth.getSession();
+
+      if (isMounted) {
+        setSession(data.session ?? null);
+        setIsBooting(false);
+      }
+    };
+
+    loadSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       setSession(nextSession ?? null);
     });
 
     return () => {
-      authListener.subscription.unsubscribe();
+      isMounted = false;
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -52,7 +63,7 @@ function AppNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName={session ? 'Home' : 'Auth'}>
+      <Stack.Navigator screenOptions={{ headerBackTitle: 'Back' }}>
         {session ? (
           <>
             <Stack.Screen name="Home" component={HomeScreen} />
@@ -62,7 +73,11 @@ function AppNavigator() {
             <Stack.Screen name="Results" component={ResultsScreen} />
           </>
         ) : (
-          <Stack.Screen name="Auth" component={AuthScreen} options={{ headerShown: false }} />
+          <Stack.Screen
+            name="Auth"
+            component={AuthScreen}
+            options={{ headerShown: false }}
+          />
         )}
       </Stack.Navigator>
     </NavigationContainer>
