@@ -388,6 +388,8 @@ export default function MySessionsScreen({ navigation }: Props) {
                 const hasShooterVideo = !!session.shooterUpload?.videoFilename;
                 const hasGoalkeeperVideo = !!session.goalkeeperResponse?.videoFilename;
                 const analysis = analyzeSession(session);
+                const reportCount = (session as any).reportCount ?? 0;
+                const lastReportExportedAt = (session as any).lastReportExportedAt ?? null;
 
                 return (
                   <View
@@ -409,6 +411,13 @@ export default function MySessionsScreen({ navigation }: Props) {
                     </Text>
                     <Text style={styles.sessionText}>
                       Created: {new Date(session.challenge.createdAt).toLocaleString()}
+                    </Text>
+                    <Text style={styles.sessionText}>Report Count: {reportCount}</Text>
+                    <Text style={styles.sessionText}>
+                      Last Exported:{' '}
+                      {lastReportExportedAt
+                        ? new Date(lastReportExportedAt).toLocaleString()
+                        : 'Never'}
                     </Text>
 
                     <View style={styles.thumbnailRow}>
